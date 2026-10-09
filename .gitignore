@@ -1,0 +1,4 @@
+.DS_Store
+__pycache__/
+# 旧版（ブラウザ内のデータを新しい版へ移したら削除してよい）
+kantei-anki.html

@@ -1,0 +1,1824 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>鑑定評価基準 暗記ノート</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="暗記ノート">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17181a" media="(prefers-color-scheme: dark)">
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --text: #1f2328; --muted: #6b6f76; --border: #e2e0da;
+  --accent: #2f6f5e; --on-accent: #ffffff; --accent-weak: #e3efe9;
+  --miss-bg: #fde2e1; --miss-text: #b42318;
+  --extra-bg: #fff1e0; --extra-text: #b54708;
+  --hint-bg: #fff4c2;
+  --good: #2f6f5e; --mid: #a87c00; --bad: #b42318;
+  --good-bg: #e3efe9; --mid-bg: #fbf0cf; --bad-bg: #fde2e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181a; --panel: #1f2124; --text: #e6e6e3; --muted: #9a9ea4; --border: #34373c;
+    --accent: #6cc3a6; --on-accent: #10221c; --accent-weak: #1f3a32;
+    --miss-bg: #4a1f1d; --miss-text: #ff9b93;
+    --extra-bg: #3d2a15; --extra-text: #f5a35c;
+    --hint-bg: #3a3418;
+    --good: #6cc3a6; --mid: #e0b84a; --bad: #ff8a80;
+    --good-bg: #1f3a32; --mid-bg: #3a3418; --bad-bg: #4a1f1d;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 15px; line-height: 1.6;
+}
+[hidden] { display: none !important; }
+.app { display: grid; grid-template-columns: 290px 1fr; height: 100vh; }
+
+/* ---- sidebar ---- */
+.sidebar { border-right: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.side-head { padding: 18px 16px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.side-head h1 { font-size: 16px; margin: 0; letter-spacing: .02em; }
+#search { margin: 0 16px 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: inherit; font: inherit; font-size: 14px; }
+#itemList { overflow: auto; padding: 0 8px 20px; flex: 1; }
+.group-name { font-size: 12px; color: var(--muted); padding: 14px 8px 4px; font-weight: 600; }
+.item { display: flex; width: 100%; text-align: left; gap: 8px; align-items: center; padding: 7px 8px; border: 0; background: none; color: inherit; border-radius: 8px; cursor: pointer; font: inherit; }
+.item:hover { background: var(--bg); }
+.item.active { background: var(--accent-weak); }
+.item .t { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge { font-size: 11px; padding: 1px 7px; border-radius: 99px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.b-none { color: var(--muted); border: 1px solid var(--border); }
+.b-good { background: var(--good-bg); color: var(--good); }
+.b-mid { background: var(--mid-bg); color: var(--mid); }
+.b-bad { background: var(--bad-bg); color: var(--bad); }
+.side-empty { color: var(--muted); font-size: 13px; padding: 12px; }
+
+/* ---- main ---- */
+main { overflow: auto; padding: 28px 36px 80px; }
+.wrap { max-width: 880px; margin: 0 auto; }
+h2 { font-size: 22px; margin: 2px 0 0; }
+h3 { font-size: 15px; margin: 0 0 12px; }
+.crumb { color: var(--muted); font-size: 13px; }
+.muted { color: var(--muted); }
+.practice-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.spacer { flex: 1; }
+
+button, .button {
+  font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+}
+button:hover, .button:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+button.danger { color: var(--bad); }
+button.small { padding: 4px 10px; font-size: 13px; }
+kbd { font-family: inherit; font-size: 11px; opacity: .7; margin-left: 2px; }
+select, input[type=text] {
+  font: inherit; font-size: 14px; padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+}
+
+.tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; padding: 2px; background: var(--panel); }
+.tabs button { border: 0; border-radius: 7px; padding: 5px 16px; background: none; }
+.tabs button.on { background: var(--accent-weak); color: var(--accent); font-weight: 600; }
+
+.sheet {
+  width: 100%; min-height: 52vh; padding: 20px 22px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  font-family: inherit; font-size: 17px; line-height: 1.95; letter-spacing: .01em;
+  white-space: pre-wrap; word-break: break-all;
+}
+textarea.sheet { resize: vertical; display: block; }
+textarea.sheet:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.toolbar { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+
+.hint-box { margin-top: 12px; padding: 12px 16px; border-radius: 10px; background: var(--hint-bg); font-size: 16px; line-height: 1.8; }
+.hint-box .label { font-size: 12px; color: var(--muted); display: block; }
+.hint-box .ctx { color: var(--muted); }
+.hint-box mark { background: none; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+/* ---- result ---- */
+.score-card { display: flex; gap: 24px; align-items: center; padding: 16px 20px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border); margin-bottom: 12px; flex-wrap: wrap; }
+.score { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.score small { font-size: 18px; margin-left: 2px; }
+.stats { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; }
+.stats b { font-variant-numeric: tabular-nums; }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin: 8px 0; flex-wrap: wrap; align-items: center; }
+.d-miss { background: var(--miss-bg); color: var(--miss-text); border-radius: 2px; }
+.d-extra { background: var(--extra-bg); color: var(--extra-text); text-decoration: line-through; border-radius: 2px; padding: 0 1px; font-size: .9em; }
+.d-ign { color: var(--muted); }
+.fade-ok .d-ok { opacity: .45; }
+details { margin-top: 14px; }
+summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+
+.history { margin-top: 32px; }
+.history ol { list-style: none; padding: 0; margin: 0; }
+.history li { display: flex; gap: 14px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.history li .when { color: var(--muted); width: 92px; }
+
+/* ---- manage ---- */
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+.field { display: block; margin-bottom: 12px; }
+.field > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.field input, .field textarea { width: 100%; }
+.field textarea, .bulk { font: inherit; font-size: 14px; line-height: 1.7; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; resize: vertical; }
+pre.example { background: var(--bg); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin: 8px 0 12px; white-space: pre-wrap; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+td, th { padding: 7px 6px; border-bottom: 1px solid var(--border); text-align: left; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.msg { font-size: 13px; color: var(--accent); }
+
+/* ---- 目次 ---- */
+.item.toc-entry .t { font-weight: 600; }
+.toc-list { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px 16px; }
+.toc-part { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .15em; margin: 14px 0 2px; }
+.toc-part:first-child { margin-top: 0; }
+.toc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 3px 0; min-height: 34px; }
+.toc-row.lv1 { margin-top: 12px; font-weight: 700; font-size: 16px; }
+.toc-row.lv2 { padding-left: 1.6em; margin-top: 4px; font-weight: 600; }
+.toc-row.lv3 { padding-left: 3.2em; }
+.toc-row.lv4 { padding-left: 4.8em; font-size: 14.5px; }
+.toc-list > .toc-row:first-child, .toc-part + .toc-row { margin-top: 0; }
+.toc-row .no { flex: none; min-width: 2.2em; color: var(--muted); font-weight: 600; }
+.toc-row.lv1 .no, .toc-row.lv2 .no { min-width: 3.6em; color: var(--accent); }
+.toc-name { flex: 1; min-width: 0; }
+.toc-in { flex: 1; min-width: 0; font: inherit; font-weight: 400; padding: 4px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); }
+.toc-in:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--panel); }
+.toc-hint { flex-basis: 100%; margin-left: 3.2em; font-size: 14px; font-weight: 400; background: var(--hint-bg); padding: 2px 10px; border-radius: 6px; }
+.toc-hint .ctx { color: var(--muted); }
+.toc-hint mark { background: none; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.toc-row .mark { flex: none; width: 1.4em; text-align: center; font-weight: 700; }
+.res-ok .mark { color: var(--good); }
+.res-ng .mark { color: var(--bad); }
+.miss-count { font-size: 11px; color: var(--bad); font-weight: 400; }
+button.link { padding: 1px 8px; font-size: 12px; font-weight: 400; gap: 6px; }
+.sticky-bar { position: sticky; bottom: 0; background: var(--bg); padding: 10px 0; margin-top: 0; border-top: 1px solid var(--border); }
+
+.empty { text-align: center; padding: 80px 20px; }
+.empty ol { display: inline-block; text-align: left; line-height: 2; }
+
+/* ---- 同期 ---- */
+.sync-status { font-size: 12px; color: var(--muted); padding: 0 16px 8px; display: flex; align-items: center; gap: 6px; cursor: pointer; background: none; border: 0; text-align: left; width: 100%; }
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex: none; }
+.sync-dot.ok { background: var(--good); }
+.sync-dot.busy { background: var(--mid); }
+.sync-dot.err { background: var(--bad); }
+.token-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.token-row input { flex: 1; min-width: 200px; }
+ol.steps { padding-left: 1.4em; font-size: 14px; margin: 6px 0 12px; }
+
+/* ---- スマホ ---- */
+.mobile-bar, .scrim { display: none; }
+body { -webkit-text-size-adjust: 100%; }
+@media (hover: none) { kbd { display: none; } }
+@media (max-width: 760px) {
+  .app { display: block; height: auto; }
+  .mobile-bar {
+    display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 20;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+  }
+  .mobile-bar .title { flex: 1; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-btn { font-size: 18px; padding: 4px 12px; }
+  .sidebar {
+    position: fixed; top: 0; bottom: 0; left: 0; width: 86vw; max-width: 340px; z-index: 30;
+    transform: translateX(-102%); transition: transform .2s ease;
+    padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+  }
+  body.nav-open .sidebar { transform: none; box-shadow: 0 0 40px rgba(0, 0, 0, .25); }
+  body.nav-open .scrim { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 25; }
+  .item { padding: 10px 8px; }
+  main { overflow: visible; padding: 14px 14px calc(24px + env(safe-area-inset-bottom)); }
+  h2 { font-size: 19px; }
+  .practice-head { margin-bottom: 10px; }
+  .sheet { font-size: 16px; padding: 14px; min-height: 38vh; line-height: 1.85; }
+  input, select, textarea, .toc-in { font-size: 16px !important; }  /* iPhoneで入力時に拡大されないように */
+  select { max-width: 100%; }
+  #writeArea .toolbar, .sticky-bar {
+    position: sticky; bottom: 0; background: var(--bg); margin: 0 -14px; padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+  }
+  .toolbar button { padding: 8px 12px; }
+  .score { font-size: 32px; }
+  .score-card { gap: 12px; padding: 12px 14px; }
+  .toc-list { padding: 10px 10px 12px; }
+  .toc-row.lv2 { padding-left: .9em; }
+  .toc-row.lv3 { padding-left: 1.8em; }
+  .toc-row.lv4 { padding-left: 2.7em; }
+  .toc-row .no { min-width: 1.8em; }
+  .toc-row.lv1 .no, .toc-row.lv2 .no { min-width: 3.2em; }
+  .toc-hint { margin-left: 0; }
+  .history li .when { width: auto; }
+  .card { padding: 14px; }
+  td, th { padding: 6px 4px; }
+}
+</style>
+</head>
+<body>
+<div class="mobile-bar">
+  <button id="menuBtn" class="menu-btn" aria-label="一覧を開く">☰</button>
+  <span id="mobileTitle" class="title">暗記ノート</span>
+  <span class="sync-dot" id="mobileSyncDot"></span>
+</div>
+<div class="scrim" id="scrim"></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-head">
+      <h1>暗記ノート</h1>
+      <button id="btnManage" class="small">登録・管理</button>
+    </div>
+    <button id="syncStatus" class="sync-status" title="押すと今すぐ同期"><span class="sync-dot"></span><span class="label">同期：未接続</span></button>
+    <input id="search" type="text" placeholder="絞り込み（タイトル・本文）">
+    <nav id="itemList"></nav>
+  </aside>
+
+  <main>
+    <!-- 練習 -->
+    <section id="viewPractice" class="wrap" hidden>
+      <div class="practice-head">
+        <div>
+          <div class="crumb" id="pCat"></div>
+          <h2 id="pTitle"></h2>
+        </div>
+        <div class="row">
+          <div class="tabs">
+            <button id="tabRead">読む</button>
+            <button id="tabWrite">書く</button>
+          </div>
+          <select id="mode" title="答え合わせの判定方法">
+            <option value="strict">判定：厳密（句読点も見る）</option>
+            <option value="loose">判定：ゆるい（句読点・括弧を無視）</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="readArea">
+        <div id="readView" class="sheet"></div>
+        <div class="toolbar"><span class="spacer"></span><button id="btnGoWrite" class="primary">書いてみる</button></div>
+      </div>
+
+      <div id="writeArea">
+        <textarea id="input" class="sheet" placeholder="覚えた文章をここに書く（空白・改行は判定に影響しません）" spellcheck="false" autocomplete="off"></textarea>
+        <div id="hintBox" class="hint-box" hidden></div>
+        <div class="toolbar">
+          <button id="btnHintChars">次の数文字 <kbd>⌥H</kbd></button>
+          <button id="btnHintSentence">次の一文 <kbd>⌥J</kbd></button>
+          <span class="spacer"></span>
+          <span id="charCount" class="muted"></span>
+          <button id="btnClear">クリア</button>
+          <button id="btnCheck" class="primary">答え合わせ <kbd>⌘↩</kbd></button>
+        </div>
+      </div>
+
+      <div id="resultArea">
+        <div class="score-card">
+          <div class="score" id="rScore"></div>
+          <div class="stats" id="rStats"></div>
+        </div>
+        <div class="legend">
+          <span>原文どおり書けた部分は通常表示</span>
+          <span><span class="d-miss">赤</span>＝書けなかった・抜けた</span>
+          <span><span class="d-extra">取消線</span>＝誤って書いた・余分</span>
+          <span class="spacer"></span>
+          <label><input type="checkbox" id="fadeOk"> 正解部分を薄くする</label>
+        </div>
+        <div id="diffView" class="sheet"></div>
+        <details>
+          <summary>自分の解答をそのまま見る</summary>
+          <div id="myAnswer" class="sheet" style="min-height:0;margin-top:8px"></div>
+        </details>
+        <div class="toolbar">
+          <span class="spacer"></span>
+          <button id="btnRetryKeep">続きから直す</button>
+          <button id="btnRetry" class="primary">白紙からもう一度</button>
+        </div>
+      </div>
+
+      <section class="history">
+        <h3>この項目の記録</h3>
+        <ol id="historyList"></ol>
+      </section>
+    </section>
+
+    <!-- 目次 -->
+    <section id="viewToc" class="wrap" hidden>
+      <div class="practice-head">
+        <div>
+          <div class="crumb">不動産鑑定評価基準</div>
+          <h2>目次</h2>
+        </div>
+        <div class="tabs">
+          <button id="tocTabRead">読む</button>
+          <button id="tocTabWrite">書く</button>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:12px">
+        <select id="tocRange" title="練習する範囲"></select>
+        <select id="tocDepth" title="どの階層まで書くか">
+          <option value="1">章まで</option>
+          <option value="2">節まで</option>
+          <option value="3">Ⅰ・Ⅱ…まで</option>
+          <option value="4">１．２．…まで</option>
+        </select>
+        <select id="tocMode" title="答え合わせの判定方法">
+          <option value="strict">判定：厳密（句読点も見る）</option>
+          <option value="loose">判定：ゆるい（句読点・括弧を無視）</option>
+        </select>
+      </div>
+
+      <div id="tocResultHead" hidden>
+        <div class="score-card">
+          <div class="score" id="tocScore"></div>
+          <div class="stats" id="tocStats"></div>
+        </div>
+        <div class="legend">
+          <span>○＝正解の見出し</span>
+          <span><span class="d-miss">赤</span>＝書けなかった・抜けた</span>
+          <span><span class="d-extra">取消線</span>＝誤って書いた・余分</span>
+        </div>
+      </div>
+
+      <div id="tocList" class="toc-list"></div>
+
+      <div id="tocWriteBar" class="toolbar sticky-bar">
+        <button id="tocHintChars">次の数文字 <kbd>⌥H</kbd></button>
+        <button id="tocHintAll">見出しを表示 <kbd>⌥J</kbd></button>
+        <span class="spacer"></span>
+        <span id="tocCount" class="muted"></span>
+        <button id="tocClear">クリア</button>
+        <button id="tocCheck" class="primary">答え合わせ <kbd>⌘↩</kbd></button>
+      </div>
+      <div id="tocResultBar" class="toolbar sticky-bar" hidden>
+        <span class="spacer"></span>
+        <button id="tocRetryWrong" class="primary">間違えた見出しだけやり直す</button>
+        <button id="tocRetryKeep">続きから直す</button>
+        <button id="tocRetryBlank">白紙からもう一度</button>
+      </div>
+
+      <section class="history">
+        <h3>この範囲・深さの記録</h3>
+        <ol id="tocHistory"></ol>
+      </section>
+    </section>
+
+    <!-- 登録・管理 -->
+    <section id="viewManage" class="wrap" hidden>
+      <h2 style="margin-bottom:18px">登録・管理</h2>
+
+      <div class="card">
+        <h3 id="formTitle">1件ずつ登録</h3>
+        <label class="field"><span>分類（例：総論 第5章 ／ 留意事項 総論第7章）</span><input id="fCat" type="text" list="catList"></label>
+        <datalist id="catList"></datalist>
+        <label class="field"><span>タイトル（例：第1節 価格形成要因の分析）</span><input id="fTitle" type="text"></label>
+        <label class="field"><span>本文（基準・留意事項の原文を貼り付け）</span><textarea id="fText" rows="10"></textarea></label>
+        <div class="row">
+          <button id="fSave" class="primary">保存</button>
+          <button id="fNew">新規入力に戻す</button>
+          <button id="fDelete" class="danger" hidden>この項目を削除</button>
+          <span id="fMsg" class="msg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>まとめて登録</h3>
+        <div class="muted" style="font-size:14px">「#」で始まる行が分類、「##」で始まる行が項目のタイトルです。次の見出しまでが本文になります。</div>
+        <pre class="example"># 総論 第1章 不動産の鑑定評価に関する基本的考察
+## 第1節 不動産とその価格
+（本文を貼り付け）
+## 第2節 不動産とその価格の特徴
+（本文を貼り付け）</pre>
+        <textarea id="bulkText" class="bulk" rows="10"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button id="bulkImport" class="primary">まとめて登録</button>
+          <label class="button">テキストファイルから登録<input id="bulkFile" type="file" accept=".txt,text/plain" hidden></label>
+          <span id="bulkMsg" class="msg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>登録済みの項目</h3>
+        <table>
+          <thead><tr><th>分類</th><th>タイトル</th><th style="text-align:right">文字数</th><th style="text-align:right">練習</th><th></th></tr></thead>
+          <tbody id="manageTable"></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="syncCard">
+        <h3>同期（GitHub Gist）</h3>
+        <div id="syncOff">
+          <p class="muted" style="font-size:14px;margin-top:0">GitHubの非公開Gistにデータを保存して、MacとiPhoneで同じ本文・記録を使えるようにします。書きかけの下書きと表示の設定は端末ごとです。</p>
+          <ol class="steps">
+            <li>GitHubで「Gist」の読み書きだけを許可したアクセストークンを発行する</li>
+            <li>下の欄に貼り付けて「接続」を押す（トークンはこの端末の中にだけ保存されます）</li>
+          </ol>
+          <div class="token-row">
+            <input id="tokenInput" type="password" placeholder="github_pat_… または ghp_…" autocomplete="off" spellcheck="false">
+            <button id="syncConnect" class="primary">接続</button>
+          </div>
+        </div>
+        <div id="syncOn" hidden>
+          <p style="font-size:14px;margin-top:0" id="syncInfo"></p>
+          <div class="row">
+            <button id="syncNowBtn" class="primary">今すぐ同期</button>
+            <span class="spacer"></span>
+            <button id="syncDisconnect" class="danger">この端末の接続を解除</button>
+          </div>
+        </div>
+        <div id="syncMsg" class="msg" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <h3>バックアップ</h3>
+        <p class="muted" style="font-size:14px;margin-top:0">登録した本文と記録は、このブラウザの中に保存されています（同期に接続していればGistにも保存されます）。念のため、ときどき書き出しておいてください。</p>
+        <div class="row">
+          <button id="exportBtn">書き出す（.json）</button>
+          <label class="button">読み込む<input id="importFile" type="file" accept=".json,application/json" hidden></label>
+          <span class="spacer"></span>
+          <button id="resetRecords" class="danger">記録だけリセット</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 初回 -->
+    <section id="viewEmpty" class="wrap empty" hidden>
+      <h2>暗記ノートへようこそ</h2>
+      <ol>
+        <li>「登録・管理」で、基準・留意事項の原文を貼り付けて登録</li>
+        <li>左の一覧から項目を選び、「読む」で読み込む</li>
+        <li>「書く」で何も見ずに書き出す（詰まったらヒントのボタン、Macでは ⌥H / ⌥J）</li>
+        <li>答え合わせ（Macでは ⌘↩）で、抜けや誤りが色分けで表示されます</li>
+      </ol>
+      <div class="row" style="justify-content:center;margin-top:16px">
+        <button id="emptyManage" class="primary">原文を登録する</button>
+        <button id="emptyToc">目次を練習する</button>
+        <button id="emptySample">動作確認用のサンプルを追加</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const KEY = 'kanteiAnki.v1';
+const DIFF_LIMIT = 40e6; // 比較表のセル数の上限（メモリ保護）
+const PUNCT = new Set(Array.from('、。,.・「」『』()〔〕[]【】{}〈〉《》“”"‘’\':;!?'));
+
+// ---------- 保存 ----------
+// 端末ごとのID（目次の正誤回数を端末別に数え、同期時に二重に数えないため）
+const DEVICE_KEY = 'kanteiAnki.device';
+const DEVICE = (() => {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) { id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); localStorage.setItem(DEVICE_KEY, id); }
+    return id;
+  } catch (e) { return 'd-local'; }
+})();
+
+function blankState(s = {}) {
+  let tocStats = s.tocStats || {};
+  // 旧形式（見出しのパス → 回数）は、この端末の分として引き継ぐ
+  if (Object.keys(tocStats).some(k => k.includes('/'))) tocStats = { [DEVICE]: tocStats };
+  // 並び順を端末間でそろえるため、登録日時の重複をずらしておく（まとめて登録した旧データ用）
+  const items = Array.isArray(s.items) ? s.items : [];
+  const seen = new Set();
+  for (const it of items) {
+    it.created = it.created || 0;
+    while (seen.has(it.created)) it.created++;
+    seen.add(it.created);
+  }
+  return {
+    // ここから下の6つは同期する
+    items,
+    deleted: s.deleted || {},        // 削除した項目ID → 削除日時
+    records: s.records || {},
+    tocRecords: s.tocRecords || {},  // 範囲#深さ → 記録の配列
+    tocStats,                        // 端末ID → { 見出しのパス: { t: 解答回数, w: 間違えた回数 } }
+    resetAt: s.resetAt || 0,         // 「記録だけリセット」した日時
+    // ここから下は端末ごと
+    drafts: s.drafts || {},
+    tocDrafts: s.tocDrafts || {},    // 範囲#深さ → { 見出しのパス: 書きかけ }
+    settings: Object.assign({ mode: 'strict', lastId: null, fadeOk: false, tocRange: '総論|第１章', tocDepth: 4 }, s.settings || {}),
+  };
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return blankState(JSON.parse(raw));
+  } catch (e) { /* 読めなければ空で開始 */ }
+  return blankState();
+}
+let saveWarned = false;
+// synced=true は同期対象のデータ（本文・記録）が変わったとき。少し待ってからGistと同期する
+function save(synced = false) {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch (e) {
+    if (!saveWarned) { saveWarned = true; alert('保存に失敗しました。「登録・管理」からバックアップを書き出してください。'); }
+  }
+  if (synced && typeof scheduleSync === 'function') scheduleSync();
+}
+let state = load();
+
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const getItem = id => state.items.find(it => it.id === id);
+const cleanText = s => s.replace(/\r\n?/g, '\n').replace(/^\n+|\s+$/g, '');
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---------- 比較 ----------
+// 判定対象の文字列を作る。空白・改行は常に無視、ゆるいモードでは句読点・括弧も無視。
+// map[k] は seq[k] が元の文字列の何文字目かを指す。
+function buildSeq(str, mode) {
+  const chars = Array.from(str);
+  const seq = [], map = [];
+  chars.forEach((c, i) => {
+    if (/\s/.test(c)) return;
+    const n = c.normalize('NFKC');
+    if (mode === 'loose' && PUNCT.has(n)) return;
+    seq.push(n); map.push(i);
+  });
+  return { chars, seq, map };
+}
+
+// 最長共通部分列による文字単位の差分。eq=一致 / del=原文にあるが書けていない / ins=原文にない文字
+function diff(a, b, trimSuffix) {
+  let pre = 0;
+  while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
+  let suf = 0;
+  if (trimSuffix) {
+    while (suf < a.length - pre && suf < b.length - pre && a[a.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
+  }
+  const n = a.length - pre - suf, m = b.length - pre - suf;
+  if ((n + 1) * (m + 1) > DIFF_LIMIT) throw new Error('too long');
+
+  const ops = [];
+  for (let i = 0; i < pre; i++) ops.push({ t: 'eq', ai: i, bi: i });
+  const W = m + 1;
+  const L = new Uint16Array((n + 1) * W);
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      L[i * W + j] = a[pre + i] === b[pre + j]
+        ? L[(i + 1) * W + j + 1] + 1
+        : Math.max(L[(i + 1) * W + j], L[i * W + j + 1]);
+    }
+  }
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[pre + i] === b[pre + j]) { ops.push({ t: 'eq', ai: pre + i, bi: pre + j }); i++; j++; }
+    else if (L[(i + 1) * W + j] >= L[i * W + j + 1]) { ops.push({ t: 'del', ai: pre + i }); i++; }
+    else { ops.push({ t: 'ins', bi: pre + j }); j++; }
+  }
+  for (; i < n; i++) ops.push({ t: 'del', ai: pre + i });
+  for (; j < m; j++) ops.push({ t: 'ins', bi: pre + j });
+  for (let k = 0; k < suf; k++) ops.push({ t: 'eq', ai: a.length - suf + k, bi: b.length - suf + k });
+  return ops;
+}
+
+function compare(orig, input, mode) {
+  const A = buildSeq(orig, mode), B = buildSeq(input, mode);
+  const ops = diff(A.seq, B.seq, true);
+  const status = new Array(A.chars.length).fill('ign');
+  const after = new Map(); // 原文の何文字目の直後に誤記を差し込むか
+  let last = -1, eq = 0, miss = 0, extra = 0;
+  for (const op of ops) {
+    if (op.t === 'eq') { last = A.map[op.ai]; status[last] = 'ok'; eq++; }
+    else if (op.t === 'del') { last = A.map[op.ai]; status[last] = 'miss'; miss++; }
+    else { extra++; after.set(last, (after.get(last) || '') + B.chars[B.map[op.bi]]); }
+  }
+  let html = '';
+  const emitIns = k => { if (after.has(k)) html += `<span class="d-extra">${esc(after.get(k))}</span>`; };
+  emitIns(-1);
+  let i = 0;
+  while (i < A.chars.length) {
+    const st = status[i];
+    let j = i, buf = '';
+    while (j < A.chars.length && status[j] === st) {
+      buf += A.chars[j]; j++;
+      if (after.has(j - 1)) break;
+    }
+    html += `<span class="d-${st}">${esc(buf)}</span>`;
+    emitIns(j - 1);
+    i = j;
+  }
+  const total = A.seq.length;
+  return { html, eq, miss, extra, total, score: total ? Math.round(eq / total * 1000) / 10 : 0 };
+}
+
+// 書いた文章が原文のどこまで進んでいるかを推定（原文の文字位置を返す）
+function hintPosition(orig, input, mode) {
+  const A = buildSeq(orig, mode), B = buildSeq(input, mode);
+  if (!A.seq.length || !B.seq.length) return 0;
+  const ops = diff(A.seq, B.seq, false);
+  const runs = [];
+  let run = null;
+  for (const op of ops) {
+    if (op.t === 'eq') { if (run) { run.end = op.ai; run.len++; } else run = { end: op.ai, len: 1 }; }
+    else if (run) { runs.push(run); run = null; }
+  }
+  if (run) runs.push(run);
+  if (!runs.length) return 0;
+  // 1〜2文字だけの偶然の一致（「の」など）に引っ張られないよう、3文字以上続いた一致を優先
+  let pick = runs[runs.length - 1];
+  for (let k = runs.length - 1; k >= 0; k--) if (runs[k].len >= 3) { pick = runs[k]; break; }
+  return A.map[pick.end] + 1;
+}
+function advanceChars(chars, from, n) {
+  let i = from, c = 0;
+  while (i < chars.length && c < n) { if (!/\s/.test(chars[i])) c++; i++; }
+  return i;
+}
+function advanceSentence(chars, from) {
+  let i = from;
+  while (i < chars.length && /\s/.test(chars[i])) i++;
+  while (i < chars.length) {
+    if (chars[i] === '\n') break;
+    if (chars[i++] === '。') break;
+  }
+  return i;
+}
+
+// ---------- 目次データ（不動産鑑定評価基準 平成26年5月1日一部改正版から抽出） ----------
+// [編, 階層(1=章 2=節 3=Ⅰ 4=１．), 番号, 見出し]
+const TOC_RAW = [
+["総論", 1, "第１章", "不動産の鑑定評価に関する基本的考察"],
+["総論", 2, "第１節", "不動産とその価格"],
+["総論", 2, "第２節", "不動産とその価格の特徴"],
+["総論", 2, "第３節", "不動産の鑑定評価"],
+["総論", 2, "第４節", "不動産鑑定士の責務"],
+["総論", 1, "第２章", "不動産の種別及び類型"],
+["総論", 2, "第１節", "不動産の種別"],
+["総論", 3, "Ⅰ", "地域の種別"],
+["総論", 3, "Ⅱ", "土地の種別"],
+["総論", 2, "第２節", "不動産の類型"],
+["総論", 3, "Ⅰ", "宅地"],
+["総論", 3, "Ⅱ", "建物及びその敷地"],
+["総論", 1, "第３章", "不動産の価格を形成する要因"],
+["総論", 2, "第１節", "一般的要因"],
+["総論", 3, "Ⅰ", "自然的要因"],
+["総論", 4, "１．", "地質、地盤等の状態"],
+["総論", 4, "２．", "土壌及び土層の状態"],
+["総論", 4, "３．", "地勢の状態"],
+["総論", 4, "４．", "地理的位置関係"],
+["総論", 4, "５．", "気象の状態"],
+["総論", 3, "Ⅱ", "社会的要因"],
+["総論", 4, "１．", "人口の状態"],
+["総論", 4, "２．", "家族構成及び世帯分離の状態"],
+["総論", 4, "３．", "都市形成及び公共施設の整備の状態"],
+["総論", 4, "４．", "教育及び社会福祉の状態"],
+["総論", 4, "５．", "不動産の取引及び使用収益の慣行"],
+["総論", 4, "６．", "建築様式等の状態"],
+["総論", 4, "７．", "情報化の進展の状態"],
+["総論", 4, "８．", "生活様式等の状態"],
+["総論", 3, "Ⅲ", "経済的要因"],
+["総論", 4, "１．", "貯蓄、消費、投資及び国際収支の状態"],
+["総論", 4, "２．", "財政及び金融の状態"],
+["総論", 4, "３．", "物価、賃金、雇用及び企業活動の状態"],
+["総論", 4, "４．", "税負担の状態"],
+["総論", 4, "５．", "企業会計制度の状態"],
+["総論", 4, "６．", "技術革新及び産業構造の状態"],
+["総論", 4, "７．", "交通体系の状態"],
+["総論", 4, "８．", "国際化の状態"],
+["総論", 3, "Ⅳ", "行政的要因"],
+["総論", 4, "１．", "土地利用に関する計画及び規制の状態"],
+["総論", 4, "２．", "土地及び建築物の構造、防災等に関する規制の状態"],
+["総論", 4, "３．", "宅地及び住宅に関する施策の状態"],
+["総論", 4, "４．", "不動産に関する税制の状態"],
+["総論", 4, "５．", "不動産の取引に関する規制の状態"],
+["総論", 2, "第２節", "地域要因"],
+["総論", 3, "Ⅰ", "宅地地域"],
+["総論", 4, "１．", "住宅地域"],
+["総論", 4, "２．", "商業地域"],
+["総論", 4, "３．", "工業地域"],
+["総論", 3, "Ⅱ", "農地地域"],
+["総論", 4, "１．", "日照、温度、湿度、風雨等の気象の状態"],
+["総論", 4, "２．", "起伏、高低等の地勢の状態"],
+["総論", 4, "３．", "土壌及び土層の状態"],
+["総論", 4, "４．", "水利及び水質の状態"],
+["総論", 4, "５．", "洪水、地すべり等の災害の発生の危険性"],
+["総論", 4, "６．", "道路等の整備の状態"],
+["総論", 4, "７．", "集落との位置関係"],
+["総論", 4, "８．", "集荷地又は産地市場との位置関係"],
+["総論", 4, "９．", "消費地との距離及び輸送施設の状態"],
+["総論", 3, "Ⅲ", "林地地域"],
+["総論", 4, "１．", "日照、温度、湿度、風雨等の気象の状態"],
+["総論", 4, "２．", "標高、地勢等の状態"],
+["総論", 4, "３．", "土壌及び土層の状態"],
+["総論", 4, "４．", "林道等の整備の状態"],
+["総論", 4, "５．", "労働力確保の難易"],
+["総論", 4, "６．", "行政上の助成及び規制の程度"],
+["総論", 2, "第３節", "個別的要因"],
+["総論", 3, "Ⅰ", "土地に関する個別的要因"],
+["総論", 4, "１．", "宅地"],
+["総論", 4, "２．", "農地"],
+["総論", 4, "３．", "林地"],
+["総論", 4, "４．", "見込地及び移行地"],
+["総論", 3, "Ⅱ", "建物に関する個別的要因"],
+["総論", 4, "１．", "建築（新築、増改築等又は移転）の年次"],
+["総論", 4, "２．", "面積、高さ、構造、材質等"],
+["総論", 4, "３．", "設計、設備等の機能性"],
+["総論", 4, "４．", "施工の質と量"],
+["総論", 4, "５．", "耐震性、耐火性等建物の性能"],
+["総論", 4, "６．", "維持管理の状態"],
+["総論", 4, "７．", "有害な物質の使用の有無及びその状態"],
+["総論", 4, "８．", "建物とその環境との適合の状態"],
+["総論", 4, "９．", "公法上及び私法上の規制、制約等"],
+["総論", 3, "Ⅲ", "建物及びその敷地に関する個別的要因"],
+["総論", 4, "１．", "賃借人の状況及び賃貸借契約の内容"],
+["総論", 4, "２．", "貸室の稼働状況"],
+["総論", 4, "３．", "躯体・設備・内装等の資産区分及び修繕費用等の負担区分"],
+["総論", 1, "第４章", "不動産の価格に関する諸原則"],
+["総論", 3, "Ⅰ", "需要と供給の原則"],
+["総論", 3, "Ⅱ", "変動の原則"],
+["総論", 3, "Ⅲ", "代替の原則"],
+["総論", 3, "Ⅳ", "最有効使用の原則"],
+["総論", 3, "Ⅴ", "均衡の原則"],
+["総論", 3, "Ⅵ", "収益逓増及び逓減の原則"],
+["総論", 3, "Ⅶ", "収益配分の原則"],
+["総論", 3, "Ⅷ", "寄与の原則"],
+["総論", 3, "Ⅸ", "適合の原則"],
+["総論", 3, "Ⅹ", "競争の原則"],
+["総論", 3, "ⅩⅠ", "予測の原則"],
+["総論", 1, "第５章", "鑑定評価の基本的事項"],
+["総論", 2, "第１節", "対象不動産の確定"],
+["総論", 3, "Ⅰ", "対象確定条件"],
+["総論", 3, "Ⅱ", "地域要因又は個別的要因についての想定上の条件"],
+["総論", 3, "Ⅲ", "調査範囲等条件"],
+["総論", 3, "Ⅳ", "鑑定評価が鑑定評価書の利用者の利益に重大な影響を及ぼす場合における条件設定の制限"],
+["総論", 3, "Ⅴ", "条件設定に関する依頼者との合意等"],
+["総論", 2, "第２節", "価格時点の確定"],
+["総論", 2, "第３節", "鑑定評価によって求める価格又は賃料の種類の確定"],
+["総論", 3, "Ⅰ", "価格"],
+["総論", 4, "１．", "正常価格"],
+["総論", 4, "２．", "限定価格"],
+["総論", 4, "３．", "特定価格"],
+["総論", 4, "４．", "特殊価格"],
+["総論", 3, "Ⅱ", "賃料"],
+["総論", 4, "１．", "正常賃料"],
+["総論", 4, "２．", "限定賃料"],
+["総論", 4, "３．", "継続賃料"],
+["総論", 1, "第６章", "地域分析及び個別分析"],
+["総論", 2, "第１節", "地域分析"],
+["総論", 3, "Ⅰ", "地域分析の意義"],
+["総論", 3, "Ⅱ", "地域分析の適用"],
+["総論", 4, "１．", "地域及びその特性"],
+["総論", 4, "２．", "対象不動産に係る市場の特性"],
+["総論", 2, "第２節", "個別分析"],
+["総論", 3, "Ⅰ", "個別分析の意義"],
+["総論", 3, "Ⅱ", "個別分析の適用"],
+["総論", 4, "１．", "個別的要因の分析上の留意点"],
+["総論", 4, "２．", "最有効使用の判定上の留意点"],
+["総論", 1, "第７章", "鑑定評価の方式"],
+["総論", 2, "第１節", "価格を求める鑑定評価の手法"],
+["総論", 3, "Ⅰ", "試算価格を求める場合の一般的留意事項"],
+["総論", 4, "１．", "一般的要因と鑑定評価の各手法の適用との関連"],
+["総論", 4, "２．", "事例の収集及び選択"],
+["総論", 4, "３．", "事情補正"],
+["総論", 4, "４．", "時点修正"],
+["総論", 4, "５．", "地域要因の比較及び個別的要因の比較"],
+["総論", 3, "Ⅱ", "原価法"],
+["総論", 4, "１．", "意義"],
+["総論", 4, "２．", "適用方法"],
+["総論", 4, "３．", "減価修正"],
+["総論", 3, "Ⅲ", "取引事例比較法"],
+["総論", 4, "１．", "意義"],
+["総論", 4, "２．", "適用方法"],
+["総論", 3, "Ⅳ", "収益還元法"],
+["総論", 4, "１．", "意義"],
+["総論", 4, "２．", "収益価格を求める方法"],
+["総論", 4, "３．", "適用方法"],
+["総論", 2, "第２節", "賃料を求める鑑定評価の手法"],
+["総論", 3, "Ⅰ", "賃料を求める場合の一般的留意事項"],
+["総論", 4, "１．", "実質賃料と支払賃料"],
+["総論", 4, "２．", "支払賃料の求め方"],
+["総論", 4, "３．", "賃料の算定の期間"],
+["総論", 4, "４．", "継続賃料を求める場合"],
+["総論", 3, "Ⅱ", "新規賃料を求める鑑定評価の手法"],
+["総論", 4, "１．", "積算法"],
+["総論", 4, "２．", "賃貸事例比較法"],
+["総論", 4, "３．", "収益分析法"],
+["総論", 3, "Ⅲ", "継続賃料を求める鑑定評価の手法"],
+["総論", 4, "１．", "差額配分法"],
+["総論", 4, "２．", "利回り法"],
+["総論", 4, "３．", "スライド法"],
+["総論", 4, "４．", "賃貸事例比較法"],
+["総論", 1, "第８章", "鑑定評価の手順"],
+["総論", 2, "第１節", "鑑定評価の基本的事項の確定"],
+["総論", 2, "第２節", "依頼者、提出先等及び利害関係等の確認"],
+["総論", 3, "Ⅰ", "依頼者並びに鑑定評価書が依頼者以外の者へ提出される場合における当該提出先及び鑑定評価額が依頼者以外の者へ開示される場合における当該開示の相手方"],
+["総論", 3, "Ⅱ", "関与不動産鑑定士及び関与不動産鑑定業者に係る利害関係等"],
+["総論", 4, "１．", "関与不動産鑑定士及び関与不動産鑑定業者の対象不動産に関する利害関係等"],
+["総論", 4, "２．", "依頼者と関与不動産鑑定士及び関与不動産鑑定業者との関係"],
+["総論", 4, "３．", "提出先等と関与不動産鑑定士及び関与不動産鑑定業者との関係"],
+["総論", 3, "Ⅲ", "鑑定評価額の公表の有無"],
+["総論", 2, "第３節", "処理計画の策定"],
+["総論", 2, "第４節", "対象不動産の確認"],
+["総論", 3, "Ⅰ", "対象不動産の物的確認"],
+["総論", 3, "Ⅱ", "権利の態様の確認"],
+["総論", 2, "第５節", "資料の収集及び整理"],
+["総論", 3, "Ⅰ", "確認資料"],
+["総論", 3, "Ⅱ", "要因資料"],
+["総論", 3, "Ⅲ", "事例資料"],
+["総論", 2, "第６節", "資料の検討及び価格形成要因の分析"],
+["総論", 2, "第７節", "鑑定評価の手法の適用"],
+["総論", 2, "第８節", "試算価格又は試算賃料の調整"],
+["総論", 3, "Ⅰ", "各試算価格又は試算賃料の再吟味"],
+["総論", 4, "１．", "資料の選択、検討及び活用の適否"],
+["総論", 4, "２．", "不動産の価格に関する諸原則の当該案件に即応した活用の適否"],
+["総論", 4, "３．", "一般的要因の分析並びに地域分析及び個別分析の適否"],
+["総論", 4, "４．", "各手法の適用において行った各種補正、修正等に係る判断の適否"],
+["総論", 4, "５．", "各手法に共通する価格形成要因に係る判断の整合性"],
+["総論", 4, "６．", "単価と総額との関連の適否"],
+["総論", 3, "Ⅱ", "各試算価格又は試算賃料が有する説得力に係る判断"],
+["総論", 4, "１．", "対象不動産に係る地域分析及び個別分析の結果と各手法との適合性"],
+["総論", 4, "２．", "各手法の適用において採用した資料の特性及び限界からくる相対的信頼性"],
+["総論", 2, "第９節", "鑑定評価額の決定"],
+["総論", 2, "第１０節", "鑑定評価報告書の作成"],
+["総論", 1, "第９章", "鑑定評価報告書"],
+["総論", 2, "第１節", "鑑定評価報告書の作成指針"],
+["総論", 2, "第２節", "記載事項"],
+["総論", 3, "Ⅰ", "鑑定評価額及び価格又は賃料の種類"],
+["総論", 3, "Ⅱ", "鑑定評価の条件"],
+["総論", 3, "Ⅲ", "対象不動産の所在、地番、地目、家屋番号、構造、用途、数量等及び対象不動産に係る権利の種類"],
+["総論", 3, "Ⅳ", "対象不動産の確認に関する事項"],
+["総論", 4, "１．", "実地調査を行った年月日"],
+["総論", 4, "２．", "実地調査を行った不動産鑑定士の氏名"],
+["総論", 4, "３．", "立会人の氏名及び職業"],
+["総論", 4, "４．", "実地調査を行った範囲（内覧の実施の有無を含む。）"],
+["総論", 4, "５．", "実地調査の一部を実施することができなかった場合にあっては、その理由"],
+["総論", 3, "Ⅴ", "鑑定評価の依頼目的及び依頼目的に対応した条件と価格又は賃料の種類との関連"],
+["総論", 3, "Ⅵ", "価格時点及び鑑定評価を行った年月日"],
+["総論", 3, "Ⅶ", "鑑定評価額の決定の理由の要旨"],
+["総論", 4, "１．", "地域分析及び個別分析に係る事項"],
+["総論", 4, "２．", "最有効使用の判定に関する事項"],
+["総論", 4, "３．", "鑑定評価の手法の適用に関する事項"],
+["総論", 4, "４．", "試算価格又は試算賃料の調整に関する事項"],
+["総論", 4, "５．", "公示価格との規準に関する事項"],
+["総論", 4, "６．", "当事者間で事実の主張が異なる事項"],
+["総論", 4, "７．", "その他"],
+["総論", 3, "Ⅷ", "鑑定評価上の不明事項に係る取扱い及び調査の範囲"],
+["総論", 3, "Ⅸ", "関与不動産鑑定士及び関与不動産鑑定業者に係る利害関係等"],
+["総論", 4, "１．", "関与不動産鑑定士及び関与不動産鑑定業者の対象不動産に関する利害関係等"],
+["総論", 4, "２．", "依頼者と関与不動産鑑定士及び関与不動産鑑定業者との関係"],
+["総論", 4, "３．", "提出先等と関与不動産鑑定士及び関与不動産鑑定業者との関係等"],
+["総論", 3, "Ⅹ", "関与不動産鑑定士の氏名"],
+["総論", 2, "第３節", "附属資料"],
+["各論", 1, "第１章", "価格に関する鑑定評価"],
+["各論", 2, "第１節", "土地"],
+["各論", 3, "Ⅰ", "宅地"],
+["各論", 4, "１．", "更地"],
+["各論", 4, "２．", "建付地"],
+["各論", 4, "３．", "借地権及び底地"],
+["各論", 4, "４．", "区分地上権"],
+["各論", 3, "Ⅱ", "農地"],
+["各論", 3, "Ⅲ", "林地"],
+["各論", 3, "Ⅳ", "宅地見込地"],
+["各論", 4, "１．", "当該宅地見込地の宅地化を助長し、又は阻害している行政上の措置又は規制"],
+["各論", 4, "２．", "付近における公共施設及び公益的施設の整備の動向"],
+["各論", 4, "３．", "付近における住宅、店舗、工場等の建設の動向"],
+["各論", 4, "４．", "造成の難易及びその必要の程度"],
+["各論", 4, "５．", "造成後における宅地としての有効利用度"],
+["各論", 2, "第２節", "建物及びその敷地"],
+["各論", 3, "Ⅰ", "自用の建物及びその敷地"],
+["各論", 3, "Ⅱ", "貸家及びその敷地"],
+["各論", 4, "１．", "将来における賃料の改定の実現性とその程度"],
+["各論", 4, "２．", "契約に当たって授受された一時金の額及びこれに関する契約条件"],
+["各論", 4, "３．", "将来見込まれる一時金の額及びこれに関する契約条件"],
+["各論", 4, "４．", "契約締結の経緯、経過した借家期間及び残存期間並びに建物の残存耐用年数"],
+["各論", 4, "５．", "貸家及びその敷地の取引慣行並びに取引利回り"],
+["各論", 4, "６．", "借家の目的、契約の形式、登記の有無、転借か否かの別及び定期建物賃貸借（借地借家法第３８条に規定する定期建物賃貸借をいう。）か否かの別"],
+["各論", 4, "７．", "借家権価格"],
+["各論", 3, "Ⅲ", "借地権付建物"],
+["各論", 4, "１．", "建物が自用の場合"],
+["各論", 4, "２．", "建物が賃貸されている場合"],
+["各論", 3, "Ⅳ", "区分所有建物及びその敷地"],
+["各論", 4, "１．", "区分所有建物及びその敷地の価格形成要因"],
+["各論", 4, "２．", "区分所有建物及びその敷地の鑑定評価"],
+["各論", 2, "第３節", "建物"],
+["各論", 3, "Ⅰ", "建物及びその敷地が一体として市場性を有する場合における建物のみの鑑定評価"],
+["各論", 3, "Ⅱ", "建物及びその敷地が一体として市場性を有しない場合における建物のみの鑑定評価"],
+["各論", 3, "Ⅲ", "借家権"],
+["各論", 2, "第４節", "特定価格を求める場合に適用する鑑定評価の手法"],
+["各論", 3, "Ⅰ", "各論第3章第1節に規定する証券化対象不動産に係る鑑定評価目的の下で、投資家に示すための投資採算価値を表す価格を求める場合"],
+["各論", 3, "Ⅱ", "民事再生法に基づく鑑定評価目的の下で、早期売却を前提とした価格を求める場合"],
+["各論", 3, "Ⅲ", "会社更生法又は民事再生法に基づく鑑定評価目的の下で、事業の継続を前提とした価格を求める場合"],
+["各論", 1, "第２章", "賃料に関する鑑定評価"],
+["各論", 2, "第１節", "宅地"],
+["各論", 3, "Ⅰ", "新規賃料を求める場合"],
+["各論", 4, "１．", "新規賃料の価格形成要因"],
+["各論", 4, "２．", "宅地の正常賃料を求める場合"],
+["各論", 4, "３．", "宅地の限定賃料を求める場合"],
+["各論", 3, "Ⅱ", "継続賃料を求める場合"],
+["各論", 4, "１．", "継続賃料の価格形成要因"],
+["各論", 4, "２．", "継続中の宅地の賃貸借等の契約に基づく実際支払賃料を改定する場合"],
+["各論", 4, "３．", "契約上の条件又は使用目的が変更されることに伴い賃料を改定する場合"],
+["各論", 2, "第２節", "建物及びその敷地"],
+["各論", 3, "Ⅰ", "新規賃料を求める場合"],
+["各論", 4, "１．", "新規賃料の価格形成要因"],
+["各論", 4, "２．", "建物及びその敷地の正常賃料を求める場合"],
+["各論", 3, "Ⅱ", "継続賃料を求める場合"],
+["各論", 1, "第３章", "証券化対象不動産の価格に関する鑑定評価"],
+["各論", 2, "第１節", "証券化対象不動産の鑑定評価の基本的姿勢"],
+["各論", 3, "Ⅰ", "証券化対象不動産の範囲"],
+["各論", 3, "Ⅱ", "不動産鑑定士の責務"],
+["各論", 2, "第２節", "証券化対象不動産について未竣工建物等鑑定評価を行う場合の要件"],
+["各論", 2, "第３節", "処理計画の策定"],
+["各論", 3, "Ⅰ", "処理計画の策定に当たっての確認事項"],
+["各論", 3, "Ⅱ", "確認事項の記録"],
+["各論", 3, "Ⅲ", "鑑定評価の依頼目的及び依頼者の証券化関係者との関係"],
+["各論", 2, "第４節", "証券化対象不動産の個別的要因の調査等"],
+["各論", 3, "Ⅰ", "対象不動産の個別的要因の調査等"],
+["各論", 3, "Ⅱ", "実地調査"],
+["各論", 3, "Ⅲ", "エンジニアリング・レポートの取扱いと不動産鑑定士が行う調査"],
+["各論", 2, "第５節", "ＤＣＦ法の適用等"],
+["各論", 3, "Ⅰ", "ＤＣＦ法の適用過程等の明確化"],
+["各論", 3, "Ⅱ", "ＤＣＦ法の収益費用項目の統一等"]
+];
+
+// ---------- 画面 ----------
+const isMobile = () => matchMedia('(max-width: 760px)').matches;
+const scroller = () => isMobile() ? document.scrollingElement : $('main');
+const scrollToTop = () => { scroller().scrollTop = 0; };
+function closeNav() { document.body.classList.remove('nav-open'); }
+function setMobileTitle(t) { $('#mobileTitle').textContent = t || '暗記ノート'; }
+
+// ---------- 練習画面 ----------
+let cur = { id: null, phase: 'write', hintsUsed: 0, startedAt: null, hint: null, lastInput: '' };
+
+function showView(name) {
+  $('#viewPractice').hidden = name !== 'practice';
+  $('#viewManage').hidden = name !== 'manage';
+  $('#viewEmpty').hidden = name !== 'empty';
+  $('#viewToc').hidden = name !== 'toc';
+  closeNav();
+  setMobileTitle({ toc: '目次', manage: '登録・管理' }[name]);
+  if (name !== 'practice') { cur.id = null; renderList(); }
+}
+
+function selectItem(id) {
+  const it = getItem(id);
+  if (!it) return showHome();
+  cur = { id, phase: 'write', hintsUsed: 0, startedAt: null, hint: null, lastInput: '' };
+  state.settings.lastId = id; save();
+  showView('practice');
+  $('#pCat').textContent = it.cat || '未分類';
+  $('#pTitle').textContent = it.title;
+  setMobileTitle(it.title);
+  $('#readView').textContent = it.text;
+  $('#input').value = state.drafts[id] || '';
+  $('#hintBox').hidden = true;
+  setPhase('write');
+  renderHistory(); renderList(); updateCount();
+  scrollToTop();
+}
+
+function setPhase(p) {
+  cur.phase = p;
+  $('#readArea').hidden = p !== 'read';
+  $('#writeArea').hidden = p !== 'write';
+  $('#resultArea').hidden = p !== 'result';
+  $('#tabRead').classList.toggle('on', p === 'read');
+  $('#tabWrite').classList.toggle('on', p !== 'read');
+  if (p === 'write' && !isMobile()) setTimeout(() => $('#input').focus(), 0);  // iPhoneでは勝手にキーボードを出さない
+}
+
+function updateCount() {
+  const it = getItem(cur.id); if (!it) return;
+  const mode = state.settings.mode;
+  $('#charCount').textContent = `${buildSeq($('#input').value, mode).seq.length} / ${buildSeq(it.text, mode).seq.length} 字`;
+}
+
+function giveHint(kind) {
+  if (cur.phase !== 'write') return;
+  const it = getItem(cur.id); if (!it) return;
+  const input = $('#input').value;
+  const chars = Array.from(it.text);
+  let h = cur.hint;
+  if (!h || h.input !== input || h.mode !== state.settings.mode) {
+    let pos = 0;
+    try { pos = hintPosition(it.text, input, state.settings.mode); } catch (e) { pos = 0; }
+    h = { input, mode: state.settings.mode, pos, end: pos };
+  }
+  h.end = kind === 'chars' ? advanceChars(chars, h.end, 5) : advanceSentence(chars, h.end);
+  cur.hint = h;
+  cur.hintsUsed++;
+  const box = $('#hintBox');
+  box.hidden = false;
+  if (h.end <= h.pos) {
+    box.innerHTML = '<span class="label">ヒント</span>ここで原文は終わりです。';
+    return;
+  }
+  const before = chars.slice(Math.max(0, h.pos - 12), h.pos).join('').replace(/\s+/g, ' ');
+  const shown = chars.slice(h.pos, h.end).join('');
+  box.innerHTML = `<span class="label">ヒント（この項目で${cur.hintsUsed}回目・もう一度押すと続きを表示）</span>` +
+    `<span class="ctx">${h.pos > 12 ? '…' : ''}${esc(before)}</span><mark>${esc(shown)}</mark>`;
+}
+
+function doCheck() {
+  const it = getItem(cur.id); if (!it) return;
+  const input = $('#input').value;
+  if (!input.trim()) { $('#input').focus(); return; }
+  let res;
+  try { res = compare(it.text, input, state.settings.mode); }
+  catch (e) { alert('文章が長すぎて比較できません。項目をいくつかに分けて登録してください。'); return; }
+  const rec = {
+    at: Date.now(), score: res.score, miss: res.miss, extra: res.extra,
+    hints: cur.hintsUsed, mode: state.settings.mode,
+    sec: cur.startedAt ? Math.round((Date.now() - cur.startedAt) / 1000) : null,
+  };
+  (state.records[it.id] = state.records[it.id] || []).push(rec);
+  save(true);
+  cur.lastInput = input;
+  showResult(res, rec);
+  setPhase('result');
+  renderHistory(); renderList();
+  scrollToTop();
+}
+
+function showResult(res, rec) {
+  $('#rScore').innerHTML = `${res.score}<small>%</small>`;
+  $('#rScore').style.color = scoreColor(res.score);
+  const parts = [
+    `書けた <b>${res.eq.toLocaleString()}</b> / ${res.total.toLocaleString()} 字`,
+    `抜け <b>${res.miss}</b>`,
+    `誤り・余分 <b>${res.extra}</b>`,
+  ];
+  if (rec) {
+    parts.push(`ヒント <b>${rec.hints}</b> 回`);
+    if (rec.sec != null) parts.push(`時間 <b>${fmtSec(rec.sec)}</b>`);
+  }
+  $('#rStats').innerHTML = parts.map(p => `<span>${p}</span>`).join('');
+  $('#diffView').innerHTML = res.html;
+  $('#diffView').classList.toggle('fade-ok', !!state.settings.fadeOk);
+  $('#myAnswer').textContent = cur.lastInput;
+}
+
+function retry(keep) {
+  cur.hintsUsed = 0; cur.hint = null; cur.startedAt = null;
+  $('#hintBox').hidden = true;
+  if (!keep) { $('#input').value = ''; delete state.drafts[cur.id]; save(); }
+  else cur.startedAt = Date.now();
+  updateCount();
+  setPhase('write');
+}
+
+const scoreColor = s => s >= 90 ? 'var(--good)' : s >= 70 ? 'var(--mid)' : 'var(--bad)';
+const scoreClass = s => s >= 90 ? 'b-good' : s >= 70 ? 'b-mid' : 'b-bad';
+const fmtSec = s => `${Math.floor(s / 60)}分${String(s % 60).padStart(2, '0')}秒`;
+function fmtDate(t) {
+  const d = new Date(t);
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderHistory() {
+  const recs = (state.records[cur.id] || []).slice().reverse().slice(0, 30);
+  $('#historyList').innerHTML = recs.length
+    ? recs.map(r => `<li><span class="when">${fmtDate(r.at)}</span>` +
+        `<span class="badge ${scoreClass(r.score)}">${r.score}%</span>` +
+        `<span>抜け ${r.miss}</span><span>誤り ${r.extra}</span><span>ヒント ${r.hints}</span>` +
+        (r.sec != null ? `<span>${fmtSec(r.sec)}</span>` : '') +
+        `<span class="muted">${r.mode === 'loose' ? 'ゆるい' : '厳密'}</span></li>`).join('')
+    : '<li class="muted">まだ記録がありません</li>';
+}
+
+// ---------- 一覧 ----------
+function renderList() {
+  const q = $('#search').value.trim();
+  const groups = new Map();
+  for (const it of state.items) {
+    if (q && !(it.cat + it.title + it.text).includes(q)) continue;
+    const g = it.cat || '未分類';
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(it);
+  }
+  const tocLast = latestTocRecord();
+  let html = `<button class="item toc-entry${$('#viewToc').hidden ? '' : ' active'}" data-toc="1"><span class="t">目次</span>` +
+    (tocLast ? `<span class="badge ${scoreClass(tocLast.score)}" title="直近の目次練習の正答率">${Math.round(tocLast.score)}%</span>` : '<span class="badge b-none">未</span>') +
+    '</button>';
+  for (const [g, items] of groups) {
+    html += `<div class="group-name">${esc(g)}</div>`;
+    for (const it of items) {
+      const recs = state.records[it.id] || [];
+      const last = recs[recs.length - 1];
+      const badge = last
+        ? `<span class="badge ${scoreClass(last.score)}" title="直近の正答率・練習${recs.length}回">${Math.round(last.score)}%</span>`
+        : '<span class="badge b-none">未</span>';
+      html += `<button class="item${it.id === cur.id ? ' active' : ''}" data-id="${it.id}"><span class="t" title="${esc(it.title)}">${esc(it.title)}</span>${badge}</button>`;
+    }
+  }
+  if (!groups.size) html += `<div class="side-empty">${q ? '該当する項目がありません' : '「登録・管理」から原文を登録してください'}</div>`;
+  $('#itemList').innerHTML = html;
+}
+
+// ---------- 登録・管理 ----------
+let editingId = null;
+function openManage() {
+  showView('manage');
+  resetForm();
+  renderManage();
+}
+function resetForm() {
+  editingId = null;
+  $('#formTitle').textContent = '1件ずつ登録';
+  $('#fTitle').value = ''; $('#fText').value = '';
+  $('#fDelete').hidden = true;
+  $('#fMsg').textContent = '';
+}
+function renderManage() {
+  const cats = [...new Set(state.items.map(it => it.cat).filter(Boolean))];
+  $('#catList').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+  $('#manageTable').innerHTML = state.items.length
+    ? state.items.map(it => `<tr><td>${esc(it.cat || '未分類')}</td><td>${esc(it.title)}</td>` +
+        `<td class="num">${buildSeq(it.text, 'strict').seq.length.toLocaleString()}</td>` +
+        `<td class="num">${(state.records[it.id] || []).length}回</td>` +
+        `<td style="text-align:right"><button class="small" data-edit="${it.id}">編集</button></td></tr>`).join('')
+    : '<tr><td colspan="5" class="muted">まだ登録がありません</td></tr>';
+}
+function editItem(id) {
+  const it = getItem(id); if (!it) return;
+  editingId = id;
+  $('#formTitle').textContent = '項目を編集';
+  $('#fCat').value = it.cat; $('#fTitle').value = it.title; $('#fText').value = it.text;
+  $('#fDelete').hidden = false; $('#fMsg').textContent = '';
+  scrollToTop();
+}
+function saveForm() {
+  const cat = $('#fCat').value.trim(), title = $('#fTitle').value.trim(), text = cleanText($('#fText').value);
+  if (!title || !text) { $('#fMsg').textContent = 'タイトルと本文を入力してください'; return; }
+  if (editingId) {
+    Object.assign(getItem(editingId), { cat, title, text, updatedAt: Date.now() });
+    $('#fMsg').textContent = '更新しました';
+  } else {
+    state.items.push({ id: newId(), cat, title, text, created: Date.now(), updatedAt: Date.now() });
+    $('#fTitle').value = ''; $('#fText').value = '';
+    $('#fMsg').textContent = `「${title}」を登録しました`;
+  }
+  save(true); renderManage(); renderList();
+}
+function deleteItem() {
+  const it = getItem(editingId); if (!it) return;
+  if (!confirm(`「${it.title}」を削除します。練習の記録も消えます。よろしいですか？`)) return;
+  state.items = state.items.filter(x => x.id !== it.id);
+  delete state.records[it.id]; delete state.drafts[it.id];
+  state.deleted[it.id] = Date.now();
+  save(true); resetForm(); renderManage(); renderList();
+}
+function parseBulk(txt) {
+  const out = [];
+  let cat = '', curItem = null;
+  for (const line of txt.replace(/\r\n?/g, '\n').split('\n')) {
+    let m;
+    if ((m = line.match(/^[#＃]{2}\s*(.+)$/))) { if (curItem) out.push(curItem); curItem = { cat, title: m[1].trim(), lines: [] }; }
+    else if ((m = line.match(/^[#＃]\s*(.+)$/))) { if (curItem) out.push(curItem); curItem = null; cat = m[1].trim(); }
+    else if (curItem) curItem.lines.push(line);
+  }
+  if (curItem) out.push(curItem);
+  return out.map(o => ({ cat: o.cat, title: o.title, text: cleanText(o.lines.join('\n')) })).filter(o => o.text);
+}
+function bulkImport(src) {
+  const parsed = parseBulk(typeof src === 'string' ? src : $('#bulkText').value);
+  if (!parsed.length) { $('#bulkMsg').textContent = '「## タイトル」の行と本文が見つかりませんでした'; return; }
+  const now = Date.now();
+  let added = 0, updated = 0;
+  parsed.forEach((p, k) => {
+    // 同じ分類・タイトルの項目があれば本文だけ差し替える（記録は残す）
+    const same = state.items.find(it => it.cat === p.cat && it.title === p.title);
+    if (same) { same.text = p.text; same.updatedAt = now; updated++; }
+    else { state.items.push({ id: newId() + k, ...p, created: now + k, updatedAt: now }); added++; }
+  });
+  save(true); renderManage(); renderList();
+  if (typeof src !== 'string') $('#bulkText').value = '';
+  $('#bulkMsg').textContent = `${added}件を登録しました` + (updated ? `（${updated}件は本文を更新）` : '');
+}
+function exportData() {
+  const d = new Date();
+  const name = `kantei-anki-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.json`;
+  const blob = new Blob([JSON.stringify(state, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function importData(file) {
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const s = JSON.parse(r.result);
+      if (!Array.isArray(s.items)) throw new Error();
+      if (!confirm(`${s.items.length}件の項目を読み込みます。今のデータは置き換わります。よろしいですか？`)) return;
+      state = blankState(s); save(true); openManage();
+    } catch (e) { alert('読み込めませんでした。書き出したバックアップファイルを選んでください。'); }
+  };
+  r.readAsText(file);
+}
+
+function addSample() {
+  state.items.push({
+    id: newId(), cat: 'サンプル', title: '使い方の確認', created: Date.now(), updatedAt: Date.now(),
+    text: 'この文章は動作確認用のサンプルである。\n左の一覧から項目を選び、覚えた文章を何も見ずに書き出す。書き終えたら答え合わせを押すと、抜けた部分と誤った部分が色分けで表示される。\n確認が済んだら、登録・管理からこの項目を削除してよい。',
+  });
+  save(true); selectItem(state.items[state.items.length - 1].id);
+}
+
+function showHome() {
+  if (state.settings.lastId === TOC_ID) return openToc();
+  const last = getItem(state.settings.lastId) || state.items[0];
+  if (last) selectItem(last.id); else { showView('empty'); renderList(); }
+}
+
+// ---------- 目次 ----------
+const TOC_ID = '__toc__';
+// 各見出しに「総論/第３章/第１節/Ⅰ/１．」のようなパスを付ける（記録・下書きのキー）
+const TOC = (() => {
+  const stack = [];
+  let part = null;
+  return TOC_RAW.map(([pt, lv, no, name]) => {
+    if (pt !== part) { part = pt; stack.length = 0; }
+    stack[lv] = no; stack.length = lv + 1;
+    return { part: pt, lv, no, name, chap: stack[1], path: [pt, ...stack.slice(1).filter(Boolean)].join('/') };
+  });
+})();
+const TOC_BY_PATH = new Map(TOC.map(n => [n.path, n]));
+let toc = {};
+const nk = s => s.normalize('NFKC').replace(/\s/g, '');
+const tocKey = () => `${state.settings.tocRange}#${state.settings.tocDepth}`;
+
+function resetTocSession() { toc = { phase: 'write', hints: 0, startedAt: null, hint: null, last: null, focus: null }; }
+function tocNodes() {
+  const r = state.settings.tocRange, d = +state.settings.tocDepth;
+  return TOC.filter(n => n.lv <= d && (r === 'all' || (r.includes('|') ? `${n.part}|${n.chap}` === r : n.part === r)));
+}
+// 見出しの正誤回数（全端末の合計）
+function tocStat(path) {
+  let t = 0, w = 0;
+  for (const dev of Object.values(state.tocStats)) { const x = dev[path]; if (x) { t += x.t; w += x.w; } }
+  return t ? { t, w } : null;
+}
+function latestTocRecord() {
+  let latest = null;
+  for (const recs of Object.values(state.tocRecords)) {
+    const l = recs[recs.length - 1];
+    if (l && (!latest || l.at > latest.at)) latest = l;
+  }
+  return latest;
+}
+// 目次の章・節に対応する本文の項目（章は「前文」）
+function itemForNode(n) {
+  if (n.lv > 2) return null;
+  const ck = nk(n.part + n.chap);
+  return state.items.find(it => nk(it.cat).startsWith(ck) &&
+    (n.lv === 2 ? nk(it.title).startsWith(nk(n.no)) : it.title.trim() === '前文')) || null;
+}
+function bodyLink(n) {
+  const it = itemForNode(n);
+  if (!it) return '';
+  const recs = state.records[it.id] || [], last = recs[recs.length - 1];
+  return `<button class="small link" data-item="${it.id}" title="本文の練習へ">本文` +
+    (last ? `<span class="badge ${scoreClass(last.score)}">${Math.round(last.score)}%</span>` : '') + '</button>';
+}
+function tocRow(n, v) {
+  const res = compare(n.name, v, state.settings.mode);
+  return { good: res.miss === 0 && res.extra === 0, html: res.html, eq: res.eq, total: res.total };
+}
+function tocSummary(vals) {
+  const nodes = tocNodes();
+  let ok = 0, eq = 0, total = 0;
+  for (const n of nodes) {
+    const r = tocRow(n, vals[n.path] || '');
+    if (r.good) ok++;
+    eq += r.eq; total += r.total;
+  }
+  return { ok, rows: nodes.length, score: Math.round(ok / nodes.length * 1000) / 10, chars: total ? Math.round(eq / total * 1000) / 10 : 0 };
+}
+function tocValues() {
+  const vals = {};
+  document.querySelectorAll('.toc-in').forEach(el => { if (el.value) vals[el.dataset.path] = el.value; });
+  return vals;
+}
+
+function openToc() {
+  showView('toc');
+  state.settings.lastId = TOC_ID; save();
+  const sel = $('#tocRange');
+  if (!sel.options.length) {
+    const opts = [['all', '総論・各論 すべて']];
+    for (const part of ['総論', '各論']) {
+      opts.push([part, `${part} 全体`]);
+      TOC.filter(n => n.part === part && n.lv === 1).forEach(n => opts.push([`${part}|${n.no}`, `${part} ${n.no} ${n.name}`]));
+    }
+    sel.innerHTML = opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+  }
+  if (![...sel.options].some(o => o.value === state.settings.tocRange)) state.settings.tocRange = '総論|第１章';
+  sel.value = state.settings.tocRange;
+  $('#tocDepth').value = String(state.settings.tocDepth);
+  $('#tocMode').value = state.settings.mode;
+  resetTocSession();
+  setTocPhase('write');
+  renderList();
+}
+
+function setTocPhase(p) {
+  toc.phase = p;
+  $('#tocTabRead').classList.toggle('on', p === 'read');
+  $('#tocTabWrite').classList.toggle('on', p !== 'read');
+  $('#tocWriteBar').hidden = p !== 'write';
+  $('#tocResultBar').hidden = p !== 'result';
+  $('#tocResultHead').hidden = p !== 'result';
+  if (p === 'result') showTocScore();
+  renderTocList();
+  renderTocHistory();
+  if (p === 'write') { updateTocCount(); focusTocInput(); }
+}
+
+function renderTocList() {
+  const showPart = !state.settings.tocRange.includes('|');
+  const draft = state.tocDrafts[tocKey()] || {};
+  let html = '', part = null;
+  for (const n of tocNodes()) {
+    if (showPart && n.part !== part) { html += `<div class="toc-part">${n.part}</div>`; part = n.part; }
+    const no = `<span class="no">${esc(n.no)}</span>`;
+    if (toc.phase === 'read') {
+      const st = tocStat(n.path);
+      const miss = st && st.w ? ` <span class="miss-count" title="間違えた回数 / 答え合わせした回数">×${st.w}/${st.t}</span>` : '';
+      html += `<div class="toc-row lv${n.lv}">${no}<span class="toc-name">${esc(n.name)}${miss}</span>${bodyLink(n)}</div>`;
+    } else if (toc.phase === 'write') {
+      html += `<div class="toc-row lv${n.lv}">${no}<input class="toc-in" data-path="${esc(n.path)}" value="${esc(draft[n.path] || '')}" spellcheck="false" autocomplete="off" autocapitalize="off" enterkeyhint="next"><span class="toc-hint" hidden></span></div>`;
+    } else {
+      const r = tocRow(n, toc.last.vals[n.path] || '');
+      html += `<div class="toc-row lv${n.lv} ${r.good ? 'res-ok' : 'res-ng'}">${no}<span class="toc-name">${r.good ? esc(n.name) : r.html}</span>` +
+        `<span class="mark">${r.good ? '○' : '×'}</span>${bodyLink(n)}</div>`;
+    }
+  }
+  $('#tocList').innerHTML = html;
+}
+
+function updateTocCount() {
+  const ins = [...document.querySelectorAll('.toc-in')];
+  $('#tocCount').textContent = `${ins.filter(x => x.value.trim()).length} / ${ins.length} 見出し`;
+}
+// 下の固定ツールバーに隠れないようにスクロール
+function ensureVisible(el) {
+  const r = el.getBoundingClientRect(), barTop = $('#tocWriteBar').getBoundingClientRect().top;
+  const topLimit = ($('.mobile-bar').getBoundingClientRect().bottom || 0) + 8;
+  if (r.bottom > barTop - 8) scroller().scrollTop += r.bottom - barTop + 60;
+  else if (r.top < topLimit) scroller().scrollTop += r.top - topLimit - 40;
+}
+// 行を指定しないとき（画面を開いた直後など）は、iPhoneではキーボードを勝手に出さない
+function focusTocInput(target) {
+  if (!target && isMobile()) return;
+  const ins = [...document.querySelectorAll('.toc-in')];
+  const el = target || ins.find(x => !x.value) || ins[0];
+  if (el) { el.focus({ preventScroll: true }); ensureVisible(el); }
+}
+
+function tocHint(kind) {
+  const el = (toc.focus && document.body.contains(toc.focus)) ? toc.focus
+    : [...document.querySelectorAll('.toc-in')].find(x => !x.value);
+  if (!el) return;
+  const n = TOC_BY_PATH.get(el.dataset.path), v = el.value, mode = state.settings.mode;
+  const chars = Array.from(n.name);
+  let h = toc.hint;
+  if (!h || h.path !== n.path || h.input !== v || h.mode !== mode) {
+    const pos = v.trim() ? hintPosition(n.name, v, mode) : 0;
+    h = { path: n.path, input: v, mode, pos, end: pos };
+  }
+  h.end = kind === 'chars' ? advanceChars(chars, h.end, 3) : chars.length;
+  toc.hint = h;
+  toc.hints++;
+  const box = el.parentElement.querySelector('.toc-hint');
+  box.hidden = false;
+  box.innerHTML = h.end <= h.pos ? 'この見出しはここまでです'
+    : `<span class="ctx">${esc(chars.slice(Math.max(0, h.pos - 8), h.pos).join(''))}</span>` +
+      `<mark>${esc(chars.slice(h.pos, h.end).join(''))}</mark>${h.end < chars.length ? '…' : ''}`;
+  el.focus({ preventScroll: true });
+  ensureVisible(el);
+}
+
+function tocCheck() {
+  const vals = tocValues();
+  if (!Object.values(vals).some(v => v.trim())) { focusTocInput(); return; }
+  for (const n of tocNodes()) {
+    const mine = state.tocStats[DEVICE] || (state.tocStats[DEVICE] = {});
+    const st = mine[n.path] || (mine[n.path] = { t: 0, w: 0 });
+    st.t++;
+    if (!tocRow(n, vals[n.path] || '').good) st.w++;
+  }
+  const rec = {
+    at: Date.now(), ...tocSummary(vals), hints: toc.hints, mode: state.settings.mode,
+    sec: toc.startedAt ? Math.round((Date.now() - toc.startedAt) / 1000) : null,
+  };
+  const k = tocKey();
+  (state.tocRecords[k] = state.tocRecords[k] || []).push(rec);
+  state.tocDrafts[k] = vals;
+  save(true);
+  toc.last = { vals, rec };
+  setTocPhase('result');
+  renderList();
+  scrollToTop();
+}
+
+// 判定方法を切り替えたときも表示し直せるよう、点数はその場で計算する（記録は答え合わせ時のもの）
+function showTocScore() {
+  const s = tocSummary(toc.last.vals), rec = toc.last.rec;
+  $('#tocScore').innerHTML = `${s.score}<small>%</small>`;
+  $('#tocScore').style.color = scoreColor(s.score);
+  const parts = [`正解 <b>${s.ok}</b> / ${s.rows} 見出し`, `文字単位 <b>${s.chars}</b>%`, `ヒント <b>${rec.hints}</b> 回`];
+  if (rec.sec != null) parts.push(`時間 <b>${fmtSec(rec.sec)}</b>`);
+  $('#tocStats').innerHTML = parts.map(p => `<span>${p}</span>`).join('');
+}
+
+function tocRetry(kind) {
+  const k = tocKey();
+  const vals = toc.last ? { ...toc.last.vals } : tocValues();
+  if (kind === 'blank') state.tocDrafts[k] = {};
+  else {
+    if (kind === 'wrong') for (const n of tocNodes()) if (!tocRow(n, vals[n.path] || '').good) delete vals[n.path];
+    state.tocDrafts[k] = vals;
+  }
+  save();
+  resetTocSession();
+  if (kind !== 'blank') toc.startedAt = Date.now();
+  setTocPhase('write');
+}
+
+function renderTocHistory() {
+  const recs = (state.tocRecords[tocKey()] || []).slice().reverse().slice(0, 30);
+  $('#tocHistory').innerHTML = recs.length
+    ? recs.map(r => `<li><span class="when">${fmtDate(r.at)}</span>` +
+        `<span class="badge ${scoreClass(r.score)}">${r.score}%</span>` +
+        `<span>正解 ${r.ok}/${r.rows}</span><span>文字 ${r.chars}%</span><span>ヒント ${r.hints}</span>` +
+        (r.sec != null ? `<span>${fmtSec(r.sec)}</span>` : '') +
+        `<span class="muted">${r.mode === 'loose' ? 'ゆるい' : '厳密'}</span></li>`).join('')
+    : '<li class="muted">まだ記録がありません</li>';
+}
+
+function tocKeydown(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (toc.phase === 'write') tocCheck();
+    return;
+  }
+  if (e.altKey && !e.metaKey && (e.code === 'KeyH' || e.code === 'KeyJ')) {
+    e.preventDefault();
+    if (toc.phase === 'write') tocHint(e.code === 'KeyH' ? 'chars' : 'all');
+    return;
+  }
+  // Enter・↓で次の見出し、Shift+Enter・↑で前の見出しへ
+  const el = e.target;
+  if (!el.classList || !el.classList.contains('toc-in') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  e.preventDefault();
+  const ins = [...document.querySelectorAll('.toc-in')];
+  const back = e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey);
+  const next = ins[ins.indexOf(el) + (back ? -1 : 1)];
+  if (next) focusTocInput(next);
+}
+
+let tocDraftTimer = null;
+$('#tocList').addEventListener('input', e => {
+  if (!e.target.classList.contains('toc-in')) return;
+  if (!toc.startedAt) toc.startedAt = Date.now();
+  updateTocCount();
+  clearTimeout(tocDraftTimer);
+  const k = tocKey(), vals = tocValues();
+  tocDraftTimer = setTimeout(() => { state.tocDrafts[k] = vals; save(); }, 400);
+});
+$('#tocList').addEventListener('focusin', e => { if (e.target.classList.contains('toc-in')) toc.focus = e.target; });
+$('#tocList').addEventListener('click', e => { const b = e.target.closest('[data-item]'); if (b) selectItem(b.dataset.item); });
+$('#tocTabRead').addEventListener('click', () => setTocPhase('read'));
+$('#tocTabWrite').addEventListener('click', () => setTocPhase(toc.last ? 'result' : 'write'));
+$('#tocRange').addEventListener('change', e => {
+  state.settings.tocRange = e.target.value; save();
+  const p = toc.phase === 'read' ? 'read' : 'write';
+  resetTocSession(); setTocPhase(p);
+});
+$('#tocDepth').addEventListener('change', e => {
+  state.settings.tocDepth = +e.target.value; save();
+  const p = toc.phase === 'read' ? 'read' : 'write';
+  resetTocSession(); setTocPhase(p);
+});
+$('#tocMode').addEventListener('change', e => {
+  state.settings.mode = e.target.value; $('#mode').value = e.target.value; save();
+  if (toc.phase === 'result') { showTocScore(); renderTocList(); }
+});
+$('#tocHintChars').addEventListener('click', () => tocHint('chars'));
+$('#tocHintAll').addEventListener('click', () => tocHint('all'));
+$('#tocCheck').addEventListener('click', tocCheck);
+$('#tocClear').addEventListener('click', () => {
+  if (Object.keys(tocValues()).length && !confirm('書いた内容を消します。よろしいですか？')) return;
+  toc.last = null; tocRetry('blank');
+});
+$('#tocRetryWrong').addEventListener('click', () => tocRetry('wrong'));
+$('#tocRetryKeep').addEventListener('click', () => tocRetry('keep'));
+$('#tocRetryBlank').addEventListener('click', () => tocRetry('blank'));
+
+// ---------- 同期（GitHub Gist） ----------
+// 本文・記録を非公開Gistの1ファイルに置き、各端末のデータと合算（マージ）して書き戻す。
+const SYNC_KEY = 'kanteiAnki.sync';   // { token, gistId, lastSync, pending } … この端末の中だけに保存
+const GIST_FILE = 'kantei-anki-data.json';
+const SYNC_FIELDS = ['items', 'deleted', 'records', 'tocRecords', 'tocStats', 'resetAt'];
+let sync = (() => { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch (e) { return {}; } })();
+let syncState = sync.token ? 'idle' : 'off';
+let syncErr = '', syncing = false, syncAgain = false, syncTimer = null;
+function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) { /* 保存できなくても続行 */ } }
+
+function syncDoc(s) {
+  const d = { v: 2 };
+  for (const k of SYNC_FIELDS) d[k] = s[k];
+  return d;
+}
+// キーの順番をそろえた JSON（端末が違っても同じ内容なら同じ文字列になるように）
+function stableStringify(v) {
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+  if (v && typeof v === 'object') {
+    return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined)
+      .map(k => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
+  }
+  return JSON.stringify(v);
+}
+
+const itemTime = it => it.updatedAt || it.created || 0;
+function mergeRecordMap(x = {}, y = {}, resetAt, keep) {
+  const out = {};
+  for (const k of new Set([...Object.keys(x), ...Object.keys(y)])) {
+    if (!keep(k)) continue;
+    const m = new Map();
+    for (const r of [...(x[k] || []), ...(y[k] || [])]) if (r.at >= resetAt) m.set(`${r.at}|${r.score}`, r);
+    if (m.size) out[k] = [...m.values()].sort((p, q) => p.at - q.at);
+  }
+  return out;
+}
+function mergeDocs(a, b) {
+  const resetAt = Math.max(a.resetAt || 0, b.resetAt || 0);
+  // 項目：新しく更新された方を残す。削除の印の方が新しければ消す
+  const deleted = { ...(a.deleted || {}) };
+  for (const [id, t] of Object.entries(b.deleted || {})) deleted[id] = Math.max(deleted[id] || 0, t);
+  const byId = new Map();
+  for (const it of [...(a.items || []), ...(b.items || [])]) {
+    const prev = byId.get(it.id);
+    if (!prev || itemTime(it) > itemTime(prev)) byId.set(it.id, it);
+  }
+  const items = [...byId.values()]
+    .filter(it => !(deleted[it.id] >= itemTime(it)))
+    .sort((p, q) => (p.created || 0) - (q.created || 0) || (p.id < q.id ? -1 : 1));
+  const alive = new Set(items.map(it => it.id));
+  // 記録：両方を合わせる（同じ記録は1つに）。リセットより前の記録は捨てる
+  const records = mergeRecordMap(a.records, b.records, resetAt, id => alive.has(id));
+  const tocRecords = mergeRecordMap(a.tocRecords, b.tocRecords, resetAt, () => true);
+  // 目次の正誤回数：端末ごとの値のうち、回数の多い方（＝新しい方）を採る
+  const tocStats = {};
+  for (const d of [a, b]) {
+    if ((d.resetAt || 0) !== resetAt) continue;  // リセット前のデータは使わない
+    for (const [dev, stats] of Object.entries(d.tocStats || {})) {
+      const o = tocStats[dev] || (tocStats[dev] = {});
+      for (const [path, v] of Object.entries(stats)) if (!o[path] || v.t > o[path].t) o[path] = v;
+    }
+  }
+  return { v: 2, items, deleted, records, tocRecords, tocStats, resetAt };
+}
+
+async function gh(path, opts = {}) {
+  const res = await fetch('https://api.github.com' + path, {
+    ...opts, cache: 'no-store',
+    headers: {
+      Authorization: `Bearer ${sync.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
+      ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+    },
+  });
+  if (!res.ok) { const e = new Error(`GitHub ${res.status}`); e.status = res.status; throw e; }
+  return res.status === 204 ? null : res.json();
+}
+// 2台目以降は、既にあるGistを探して使う
+async function findOrCreateGist() {
+  for (let page = 1; page <= 10; page++) {
+    const list = await gh(`/gists?per_page=100&page=${page}`);
+    const g = list.find(x => x.files && x.files[GIST_FILE]);
+    if (g) return g.id;
+    if (list.length < 100) break;
+  }
+  const g = await gh('/gists', {
+    method: 'POST',
+    body: JSON.stringify({
+      description: '鑑定評価基準 暗記ノートの同期データ（アプリが自動で更新します）', public: false,
+      files: { [GIST_FILE]: { content: stableStringify(syncDoc(state)) } },
+    }),
+  });
+  return g.id;
+}
+async function pullGist() {
+  const g = await gh(`/gists/${sync.gistId}`);
+  const f = g.files && g.files[GIST_FILE];
+  if (!f) return null;
+  return f.truncated ? fetch(f.raw_url, { cache: 'no-store' }).then(r => r.text()) : f.content;
+}
+
+async function syncNow() {
+  if (!sync.token) return;
+  if (syncing) { syncAgain = true; return; }
+  clearTimeout(syncTimer);
+  if (!navigator.onLine) { setSyncState('offline'); return; }
+  syncing = true;
+  setSyncState('busy');
+  try {
+    if (!sync.gistId) { sync.gistId = await findOrCreateGist(); saveSync(); }
+    const text = await pullGist();
+    let remote = null;
+    try { remote = text ? JSON.parse(text) : null; } catch (e) { remote = null; }
+    const local = syncDoc(state);
+    const merged = remote ? mergeDocs(local, remote) : local;
+    const out = stableStringify(merged);
+    if (out !== stableStringify(local)) {
+      for (const k of SYNC_FIELDS) state[k] = merged[k];
+      save();
+      afterRemoteChange();
+    }
+    if (out !== text) {
+      await gh(`/gists/${sync.gistId}`, { method: 'PATCH', body: JSON.stringify({ files: { [GIST_FILE]: { content: out } } }) });
+    }
+    sync.lastSync = Date.now(); sync.pending = false; saveSync();
+    setSyncState('ok');
+  } catch (e) {
+    if (e.status === 404) { sync.gistId = null; saveSync(); }  // Gistが削除されていたら、次回作り直す
+    syncErr = e.status ? `GitHub ${e.status}` : '通信できませんでした';
+    setSyncState(e.status === 401 || e.status === 403 ? 'auth' : navigator.onLine ? 'error' : 'offline');
+  } finally {
+    syncing = false;
+    if (syncAgain) { syncAgain = false; syncNow(); }
+  }
+}
+function scheduleSync() {
+  if (!sync.token) return;
+  sync.pending = true; saveSync();
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, 2000);
+  if (!syncing) setSyncState(navigator.onLine ? 'idle' : 'offline');
+}
+
+// 他の端末の変更を取り込んだあと、書いている途中の入力欄は触らずに表示だけ更新する
+function afterRemoteChange() {
+  renderList();
+  if (!$('#viewManage').hidden) renderManage();
+  if (!$('#viewEmpty').hidden && state.items.length) return showHome();
+  if (!$('#viewPractice').hidden) {
+    const it = getItem(cur.id);
+    if (!it) return showHome();
+    $('#readView').textContent = it.text;
+    renderHistory();
+  }
+  if (!$('#viewToc').hidden) {
+    if (toc.phase !== 'write') renderTocList();
+    renderTocHistory();
+  }
+}
+
+function setSyncState(st) {
+  syncState = st;
+  const t = sync.lastSync ? fmtDate(sync.lastSync) : '';
+  const label = {
+    off: '同期：未接続',
+    idle: sync.pending ? '同期：未送信の変更あり' : `同期：接続済み${t ? '（' + t + '）' : ''}`,
+    busy: '同期中…',
+    ok: `同期済み（${t}）`,
+    offline: 'オフライン（つながったら同期します）',
+    error: `同期できませんでした（${syncErr}）`,
+    auth: 'トークンが無効です（登録・管理で接続し直してください）',
+  }[st];
+  const dot = { ok: 'ok', idle: sync.pending ? 'busy' : 'ok', busy: 'busy', offline: 'busy', error: 'err', auth: 'err' }[st] || '';
+  $('#syncStatus .label').textContent = label;
+  for (const el of [$('#syncStatus .sync-dot'), $('#mobileSyncDot')]) el.className = 'sync-dot ' + dot;
+  $('#mobileSyncDot').title = label;
+  renderSyncCard();
+}
+function renderSyncCard() {
+  const on = !!sync.token;
+  $('#syncOff').hidden = on;
+  $('#syncOn').hidden = !on;
+  if (on) {
+    $('#syncInfo').innerHTML = `この端末は接続済みです。` +
+      (sync.gistId ? `保存先：<a href="https://gist.github.com/${esc(sync.gistId)}" target="_blank" rel="noopener">非公開Gist</a>。` : '') +
+      (sync.lastSync ? `最終同期：${fmtDate(sync.lastSync)}` : '');
+  }
+}
+
+$('#syncConnect').addEventListener('click', async () => {
+  const token = $('#tokenInput').value.trim();
+  if (!token) return;
+  $('#tokenInput').value = '';
+  sync = { token, gistId: null };
+  saveSync();
+  $('#syncMsg').textContent = '接続しています…';
+  await syncNow();
+  if (syncState === 'ok') {
+    $('#syncMsg').textContent = 'Gistと同期しました。もう1台の端末でも、同じトークンで接続してください。';
+  } else {
+    $('#syncMsg').textContent = `接続できませんでした（${syncErr}）。トークンと、Gistの読み書きの権限を確認してください。`;
+    if (syncState === 'auth') { sync = {}; saveSync(); setSyncState('off'); }
+  }
+});
+$('#syncNowBtn').addEventListener('click', () => syncNow());
+$('#syncDisconnect').addEventListener('click', () => {
+  if (!confirm('この端末の同期の接続を解除します（トークンをこの端末から消します。Gistのデータと、この端末のデータは残ります）。よろしいですか？')) return;
+  sync = {}; saveSync(); setSyncState('off');
+  $('#syncMsg').textContent = '接続を解除しました。';
+});
+$('#syncStatus').addEventListener('click', () => {
+  if (sync.token) syncNow();
+  else { openManage(); $('#syncCard').scrollIntoView({ block: 'start' }); }
+});
+// アプリに戻ってきたとき・電波が戻ったときに同期
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && sync.token && (sync.pending || Date.now() - (sync.lastSync || 0) > 15000)) syncNow();
+});
+window.addEventListener('online', () => { if (sync.token) syncNow(); });
+window.addEventListener('offline', () => { if (sync.token && !syncing) setSyncState('offline'); });
+
+// ---------- イベント ----------
+$('#menuBtn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
+$('#scrim').addEventListener('click', closeNav);
+$('#itemList').addEventListener('click', e => {
+  if (e.target.closest('[data-toc]')) return openToc();
+  const b = e.target.closest('[data-id]'); if (b) selectItem(b.dataset.id);
+});
+$('#emptyToc').addEventListener('click', () => openToc());
+$('#search').addEventListener('input', renderList);
+$('#btnManage').addEventListener('click', openManage);
+$('#emptyManage').addEventListener('click', openManage);
+$('#emptySample').addEventListener('click', addSample);
+$('#tabRead').addEventListener('click', () => setPhase('read'));
+$('#tabWrite').addEventListener('click', () => setPhase(cur.phase === 'result' ? 'result' : 'write'));
+$('#btnGoWrite').addEventListener('click', () => setPhase('write'));
+$('#btnHintChars').addEventListener('click', () => giveHint('chars'));
+$('#btnHintSentence').addEventListener('click', () => giveHint('sentence'));
+$('#btnCheck').addEventListener('click', doCheck);
+$('#btnClear').addEventListener('click', () => { if (!$('#input').value || confirm('書いた内容を消します。よろしいですか？')) retry(false); });
+$('#btnRetry').addEventListener('click', () => retry(false));
+$('#btnRetryKeep').addEventListener('click', () => retry(true));
+$('#fadeOk').checked = !!state.settings.fadeOk;
+$('#fadeOk').addEventListener('change', e => { state.settings.fadeOk = e.target.checked; save(); $('#diffView').classList.toggle('fade-ok', e.target.checked); });
+$('#mode').value = state.settings.mode;
+$('#mode').addEventListener('change', e => {
+  state.settings.mode = e.target.value; save(); updateCount();
+  $('#tocMode').value = e.target.value;
+  if (cur.phase === 'result') { // 判定方法を切り替えて見直す（記録はしない）
+    try { showResult(compare(getItem(cur.id).text, cur.lastInput, state.settings.mode), null); } catch (err) {}
+  }
+});
+
+let draftTimer = null;
+$('#input').addEventListener('input', () => {
+  if (!cur.startedAt) cur.startedAt = Date.now();
+  updateCount();
+  clearTimeout(draftTimer);
+  const id = cur.id, val = $('#input').value;
+  draftTimer = setTimeout(() => { if (val) state.drafts[id] = val; else delete state.drafts[id]; save(); }, 400);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.isComposing || e.keyCode === 229) return; // 日本語変換中は無視
+  if (!$('#viewToc').hidden) return tocKeydown(e);
+  if ($('#viewPractice').hidden) return;
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (cur.phase === 'write') doCheck();
+  } else if (e.altKey && !e.metaKey && e.code === 'KeyH') {
+    e.preventDefault(); giveHint('chars');
+  } else if (e.altKey && !e.metaKey && e.code === 'KeyJ') {
+    e.preventDefault(); giveHint('sentence');
+  }
+});
+
+$('#fSave').addEventListener('click', saveForm);
+$('#fNew').addEventListener('click', resetForm);
+$('#fDelete').addEventListener('click', deleteItem);
+$('#manageTable').addEventListener('click', e => { const b = e.target.closest('[data-edit]'); if (b) editItem(b.dataset.edit); });
+$('#bulkImport').addEventListener('click', () => bulkImport());
+$('#bulkFile').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => bulkImport(String(r.result));
+  r.readAsText(f, 'utf-8');
+});
+$('#exportBtn').addEventListener('click', exportData);
+$('#importFile').addEventListener('change', e => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ''; });
+$('#resetRecords').addEventListener('click', () => {
+  if (!confirm('本文と目次の練習記録をすべて消します（登録した本文は残ります）。よろしいですか？')) return;
+  state.records = {}; state.tocRecords = {}; state.tocStats = {}; state.resetAt = Date.now();
+  save(true); renderManage(); renderList();
+});
+
+showHome();
+setSyncState(syncState);
+if (sync.token) syncNow();
+// オフラインでも開けるように（http(s)で開いたときだけ）
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => { /* 使えなくても通常どおり動く */ });
+}
+</script>
+</body>
+</html>
