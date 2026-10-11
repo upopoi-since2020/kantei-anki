@@ -163,6 +163,13 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--mut
 button.link { padding: 1px 8px; font-size: 12px; font-weight: 400; gap: 6px; }
 .sticky-bar { position: sticky; bottom: 0; background: var(--bg); padding: 10px 0; margin-top: 0; border-top: 1px solid var(--border); }
 
+/* ---- 問題 ---- */
+.q-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 13px; }
+.q-text { font-size: 19px; font-weight: 600; line-height: 1.6; margin: 6px 0 14px; }
+.q-sheet { min-height: 22vh; }
+.q-src { min-height: 0; max-height: 40vh; overflow: auto; font-size: 15px; line-height: 1.85; margin-top: 6px; user-select: text; -webkit-user-select: text; }
+.q-source { font-size: 13px; color: var(--muted); margin-top: 10px; }
+
 .empty { text-align: center; padding: 80px 20px; }
 .empty ol { display: inline-block; text-align: left; line-height: 2; }
 
@@ -371,6 +378,96 @@ body { -webkit-text-size-adjust: 100%; }
       </section>
     </section>
 
+    <!-- 問題 -->
+    <section id="viewQuiz" class="wrap" hidden>
+      <div class="practice-head">
+        <div>
+          <div class="crumb">基準・留意事項から</div>
+          <h2>問題</h2>
+        </div>
+        <div class="tabs">
+          <button id="qTabPlay">解く</button>
+          <button id="qTabList">一覧・追加</button>
+        </div>
+      </div>
+
+      <div id="qPlay">
+        <div class="row" style="margin-bottom:12px">
+          <select id="qRange" title="出題する範囲"></select>
+          <select id="qOrder" title="出題の順番">
+            <option value="seq">順番どおり</option>
+            <option value="weak">苦手な問題から</option>
+            <option value="random">ランダム</option>
+          </select>
+          <select id="qMode" title="答え合わせの判定方法">
+            <option value="strict">判定：厳密（句読点も見る）</option>
+            <option value="loose">判定：ゆるい（句読点・括弧を無視）</option>
+          </select>
+        </div>
+        <div id="qEmpty" class="card muted" hidden>この範囲には問題がありません。「一覧・追加」から問題を作るか、「登録・管理」で問題ファイルを登録してください。</div>
+        <div id="qCard">
+          <div class="q-meta"><span id="qProgress"></span><span id="qLast"></span></div>
+          <div id="qText" class="q-text"></div>
+          <div id="qWrite">
+            <textarea id="qInput" class="sheet q-sheet" placeholder="答えを書く" spellcheck="false" autocomplete="off"></textarea>
+            <div id="qHintBox" class="hint-box" hidden></div>
+            <div class="toolbar sticky-bar">
+              <button id="qHintChars">次の数文字 <kbd>⌥H</kbd></button>
+              <button id="qHintSentence">次の一文 <kbd>⌥J</kbd></button>
+              <span class="spacer"></span>
+              <button id="qSkip">とばす</button>
+              <button id="qCheck" class="primary">答え合わせ <kbd>⌘↩</kbd></button>
+            </div>
+          </div>
+          <div id="qResult" hidden>
+            <div class="score-card">
+              <div class="score" id="qScore"></div>
+              <div class="stats" id="qStats"></div>
+            </div>
+            <div class="legend">
+              <span><span class="d-miss">赤</span>＝書けなかった・抜けた</span>
+              <span><span class="d-extra">取消線</span>＝誤って書いた・余分</span>
+            </div>
+            <div id="qDiff" class="sheet q-sheet"></div>
+            <div class="q-source" id="qSource"></div>
+            <div class="toolbar sticky-bar">
+              <button id="qToBody">本文を練習</button>
+              <span class="spacer"></span>
+              <button id="qRetry">もう一度</button>
+              <button id="qNext" class="primary">次の問題 <kbd>⌘↩</kbd></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="qList" hidden>
+        <div class="card">
+          <h3 id="qFormTitle">問題を追加</h3>
+          <label class="field"><span>出典（答えを抜き出す本文）</span><select id="qfItem" style="width:100%"></select></label>
+          <div class="field">
+            <span class="muted" style="font-size:13px">下の本文で答えにしたい部分をなぞって選び、「選択した部分を答えにする」を押してください。</span>
+            <div id="qfBody" class="sheet q-src"></div>
+            <div class="row" style="margin-top:8px"><button id="qfUseSel">選択した部分を答えにする</button><span id="qfSelMsg" class="msg"></span></div>
+          </div>
+          <label class="field"><span>答え</span><textarea id="qfAnswer" rows="4"></textarea></label>
+          <label class="field"><span>問題文（例：宅地地域とは何か。／宅地の類型を挙げよ。）</span><input id="qfQ" type="text"></label>
+          <div class="row">
+            <button id="qfSave" class="primary">保存</button>
+            <button id="qfNew">新規入力に戻す</button>
+            <button id="qfDelete" class="danger" hidden>この問題を削除</button>
+            <span id="qfMsg" class="msg"></span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>登録済みの問題</h3>
+          <table>
+            <thead><tr><th>出典</th><th>問題</th><th style="text-align:right">直近</th><th></th></tr></thead>
+            <tbody id="qTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- 登録・管理 -->
     <section id="viewManage" class="wrap" hidden>
       <h2 style="margin-bottom:18px">登録・管理</h2>
@@ -391,7 +488,7 @@ body { -webkit-text-size-adjust: 100%; }
 
       <div class="card">
         <h3>まとめて登録</h3>
-        <div class="muted" style="font-size:14px">「#」で始まる行が分類、「##」で始まる行が項目のタイトルです。次の見出しまでが本文になります。</div>
+        <div class="muted" style="font-size:14px">「#」で始まる行が分類、「##」で始まる行が項目のタイトルです。次の見出しまでが本文になります。1行目が「# 問題」のファイルは、問題として登録されます。</div>
         <pre class="example"># 総論 第1章 不動産の鑑定評価に関する基本的考察
 ## 第1節 不動産とその価格
 （本文を貼り付け）
@@ -498,13 +595,15 @@ function blankState(s = {}) {
     seen.add(it.created);
   }
   return {
-    // ここから下の6つは同期する
+    // ここから下の8つは同期する
     items,
     deleted: s.deleted || {},        // 削除した項目ID → 削除日時
     records: s.records || {},
     tocRecords: s.tocRecords || {},  // 範囲#深さ → 記録の配列
     tocStats,                        // 端末ID → { 見出しのパス: { t: 解答回数, w: 間違えた回数 } }
     resetAt: s.resetAt || 0,         // 「記録だけリセット」した日時
+    questions: Array.isArray(s.questions) ? s.questions : [],  // 問題 { id, cat, title, q, answer, created, updatedAt }
+    qRecords: s.qRecords || {},      // 問題ID → 記録の配列
     // ここから下は端末ごと
     drafts: s.drafts || {},
     tocDrafts: s.tocDrafts || {},    // 範囲#深さ → { 見出しのパス: 書きかけ }
@@ -1004,8 +1103,9 @@ function showView(name) {
   $('#viewManage').hidden = name !== 'manage';
   $('#viewEmpty').hidden = name !== 'empty';
   $('#viewToc').hidden = name !== 'toc';
+  $('#viewQuiz').hidden = name !== 'quiz';
   closeNav();
-  setMobileTitle({ toc: '目次', manage: '登録・管理' }[name]);
+  setMobileTitle({ toc: '目次', manage: '登録・管理', quiz: '問題' }[name]);
   if (name !== 'practice') { cur.id = null; renderList(); }
 }
 
@@ -1151,7 +1251,9 @@ function renderList() {
   const tocLast = latestTocRecord();
   let html = `<button class="item toc-entry${$('#viewToc').hidden ? '' : ' active'}" data-toc="1"><span class="t">目次</span>` +
     (tocLast ? `<span class="badge ${scoreClass(tocLast.score)}" title="直近の目次練習の正答率">${Math.round(tocLast.score)}%</span>` : '<span class="badge b-none">未</span>') +
-    '</button>';
+    '</button>' +
+    `<button class="item toc-entry${$('#viewQuiz').hidden ? '' : ' active'}" data-quiz="1"><span class="t">問題</span>` +
+    `<span class="badge b-none" title="登録されている問題の数">${state.questions.length}問</span></button>`;
   for (const [g, items] of groups) {
     html += `<div class="group-name">${esc(g)}</div>`;
     for (const it of items) {
@@ -1233,7 +1335,13 @@ function parseBulk(txt) {
   return out.map(o => ({ cat: o.cat, title: o.title, text: cleanText(o.lines.join('\n')) })).filter(o => o.text);
 }
 function bulkImport(src) {
-  const parsed = parseBulk(typeof src === 'string' ? src : $('#bulkText').value);
+  const text = typeof src === 'string' ? src : $('#bulkText').value;
+  if (isQuestionFile(text)) {
+    $('#bulkMsg').textContent = importQuestions(text);
+    if (typeof src !== 'string') $('#bulkText').value = '';
+    return;
+  }
+  const parsed = parseBulk(text);
   if (!parsed.length) { $('#bulkMsg').textContent = '「## タイトル」の行と本文が見つかりませんでした'; return; }
   const now = Date.now();
   let added = 0, updated = 0;
@@ -1278,6 +1386,7 @@ function addSample() {
 
 function showHome() {
   if (state.settings.lastId === TOC_ID) return openToc();
+  if (state.settings.lastId === QUIZ_ID) return openQuiz();
   const last = getItem(state.settings.lastId) || state.items[0];
   if (last) selectItem(last.id); else { showView('empty'); renderList(); }
 }
@@ -1554,7 +1663,7 @@ $('#tocDepth').addEventListener('change', e => {
   resetTocSession(); setTocPhase(p);
 });
 $('#tocMode').addEventListener('change', e => {
-  state.settings.mode = e.target.value; $('#mode').value = e.target.value; save();
+  state.settings.mode = e.target.value; $('#mode').value = e.target.value; $('#qMode').value = e.target.value; save();
   if (toc.phase === 'result') { showTocScore(); renderTocList(); }
 });
 $('#tocHintChars').addEventListener('click', () => tocHint('chars'));
@@ -1568,11 +1677,304 @@ $('#tocRetryWrong').addEventListener('click', () => tocRetry('wrong'));
 $('#tocRetryKeep').addEventListener('click', () => tocRetry('keep'));
 $('#tocRetryBlank').addEventListener('click', () => tocRetry('blank'));
 
+// ---------- 問題 ----------
+// 問題ファイルの形式（1行目が「# 問題」）：
+//   @ 分類 / 項目のタイトル   … 出典。以降の問題に適用
+//   Q 問題文
+//   答え（原文の該当箇所。次の Q か @ の行まで）
+const QUIZ_ID = '__quiz__';
+let quiz = { list: [], pos: 0, lap: 1, phase: 'write', hints: 0, startedAt: null, hint: null, lastInput: '', lastRec: null, editingId: null, sel: '' };
+
+const isQuestionFile = text => (text.split('\n').find(l => l.trim()) || '').replace(/[\s　]/g, '').replace('＃', '#') === '#問題';
+function parseQuestions(text) {
+  const out = [];
+  let cat = '', title = '', cur = null;
+  for (const line of text.replace(/\r\n?/g, '\n').split('\n')) {
+    let m;
+    if ((m = line.match(/^[@＠]\s*(.+?)\s*\/\s*(.+)$/))) { cat = m[1].trim(); title = m[2].trim(); cur = null; }
+    else if ((m = line.match(/^[QＱ][\s　]+(.+)$/))) { cur = { cat, title, q: m[1].trim(), lines: [] }; out.push(cur); }
+    else if (cur) cur.lines.push(line);
+  }
+  return out.map(o => ({ cat: o.cat, title: o.title, q: o.q, answer: cleanText(o.lines.join('\n')) })).filter(o => o.q && o.answer);
+}
+function importQuestions(text) {
+  const parsed = parseQuestions(text);
+  if (!parsed.length) return '「Q 問題文」の行と答えが見つかりませんでした';
+  const now = Date.now();
+  let added = 0, updated = 0;
+  parsed.forEach((p, k) => {
+    // 同じ出典・同じ問題文があれば答えだけ差し替える（記録は残す）
+    const same = state.questions.find(x => x.q === p.q && x.cat === p.cat && x.title === p.title);
+    if (same) { if (same.answer !== p.answer) { same.answer = p.answer; same.updatedAt = now; updated++; } }
+    else { state.questions.push({ id: 'q' + newId() + k, ...p, created: now + k, updatedAt: now }); added++; }
+  });
+  save(true); renderList();
+  return `問題を${added}問登録しました` + (updated ? `（${updated}問の答えを更新）` : '');
+}
+
+const itemOfQuestion = q => state.items.find(it => nk(it.cat) === nk(q.cat) && nk(it.title) === nk(q.title)) || null;
+const lastQRec = id => { const r = state.qRecords[id]; return r && r.length ? r[r.length - 1] : null; };
+const shortCat = cat => cat.split(/\s+/).slice(0, 2).join(' ');
+// 本文の並び順（出典の項目の順）→ 登録順
+function sortedQuestions() {
+  const order = new Map(state.items.map((it, i) => [nk(it.cat) + '|' + nk(it.title), i]));
+  const key = q => order.has(nk(q.cat) + '|' + nk(q.title)) ? order.get(nk(q.cat) + '|' + nk(q.title)) : 1e9;
+  return state.questions.map((q, i) => ({ q, i })).sort((a, b) => key(a.q) - key(b.q) || a.i - b.i).map(x => x.q);
+}
+function quizFiltered() {
+  const r = state.settings.qRange || 'all';
+  return sortedQuestions().filter(q => r === 'all' || (r.startsWith('c|') ? q.cat === r.slice(2) : `t|${q.cat}|${q.title}` === r));
+}
+function buildQuizList() {
+  let list = quizFiltered();
+  const order = state.settings.qOrder || 'seq';
+  if (order === 'random') {
+    for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+  } else if (order === 'weak') {  // 未回答 → 直近の正答率が低い順
+    list = list.map((q, i) => ({ q, i, s: lastQRec(q.id) ? lastQRec(q.id).score : -1 }))
+      .sort((a, b) => a.s - b.s || a.i - b.i).map(x => x.q);
+  }
+  quiz.list = list;
+  quiz.pos = 0;
+}
+
+function openQuiz() {
+  showView('quiz');
+  state.settings.lastId = QUIZ_ID; save();
+  const opts = [['all', 'すべての問題']];
+  const seen = new Set();
+  for (const q of sortedQuestions()) {
+    if (!seen.has('c|' + q.cat)) { seen.add('c|' + q.cat); opts.push(['c|' + q.cat, q.cat]); }
+    const t = `t|${q.cat}|${q.title}`;
+    if (!seen.has(t)) { seen.add(t); opts.push([t, `　${shortCat(q.cat)} ${q.title}`]); }
+  }
+  if (!opts.some(([v]) => v === state.settings.qRange)) state.settings.qRange = 'all';
+  $('#qRange').innerHTML = opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+  $('#qRange').value = state.settings.qRange;
+  $('#qOrder').value = state.settings.qOrder || 'seq';
+  $('#qMode').value = state.settings.mode;
+  quiz.lap = 1;
+  buildQuizList();
+  setQuizTab('play');
+  renderList();
+}
+
+function setQuizTab(tab) {
+  $('#qTabPlay').classList.toggle('on', tab === 'play');
+  $('#qTabList').classList.toggle('on', tab === 'list');
+  $('#qPlay').hidden = tab !== 'play';
+  $('#qList').hidden = tab !== 'list';
+  if (tab === 'play') showQuestion();
+  else { resetQuizForm(); renderQuizList(); }
+}
+
+function showQuestion() {
+  const q = quiz.list[quiz.pos];
+  $('#qEmpty').hidden = !!q;
+  $('#qCard').hidden = !q;
+  if (!q) return;
+  Object.assign(quiz, { phase: 'write', hints: 0, hint: null, startedAt: null, lastInput: '', lastRec: null });
+  $('#qProgress').textContent = `${quiz.pos + 1} / ${quiz.list.length}${quiz.lap > 1 ? `（${quiz.lap}周目）` : ''}`;
+  renderQuizLast(q);
+  $('#qText').textContent = q.q;
+  $('#qInput').value = '';
+  $('#qHintBox').hidden = true;
+  $('#qWrite').hidden = false;
+  $('#qResult').hidden = true;
+  if (!isMobile()) $('#qInput').focus();
+}
+function renderQuizLast(q) {
+  const last = lastQRec(q.id), n = (state.qRecords[q.id] || []).length;
+  $('#qLast').innerHTML = last ? `前回 <span class="badge ${scoreClass(last.score)}">${last.score}%</span>（${n}回）` : '未回答';
+}
+
+function quizHint(kind) {
+  const q = quiz.list[quiz.pos];
+  if (!q || quiz.phase !== 'write') return;
+  const input = $('#qInput').value, mode = state.settings.mode;
+  const chars = Array.from(q.answer);
+  let h = quiz.hint;
+  if (!h || h.input !== input || h.mode !== mode) {
+    let pos = 0;
+    try { pos = input.trim() ? hintPosition(q.answer, input, mode) : 0; } catch (e) { pos = 0; }
+    h = { input, mode, pos, end: pos };
+  }
+  h.end = kind === 'chars' ? advanceChars(chars, h.end, 5) : advanceSentence(chars, h.end);
+  quiz.hint = h;
+  quiz.hints++;
+  const box = $('#qHintBox');
+  box.hidden = false;
+  if (h.end <= h.pos) { box.innerHTML = '<span class="label">ヒント</span>答えはここまでです。'; return; }
+  const before = chars.slice(Math.max(0, h.pos - 12), h.pos).join('').replace(/\s+/g, ' ');
+  box.innerHTML = `<span class="label">ヒント（${quiz.hints}回目・もう一度押すと続きを表示）</span>` +
+    `<span class="ctx">${h.pos > 12 ? '…' : ''}${esc(before)}</span><mark>${esc(chars.slice(h.pos, h.end).join(''))}</mark>`;
+}
+
+function quizCheck() {
+  const q = quiz.list[quiz.pos];
+  if (!q || quiz.phase !== 'write') return;
+  const input = $('#qInput').value;
+  if (!input.trim()) { $('#qInput').focus(); return; }
+  let res;
+  try { res = compare(q.answer, input, state.settings.mode); }
+  catch (e) { alert('答えが長すぎて比較できません。'); return; }
+  const rec = {
+    at: Date.now(), score: res.score, miss: res.miss, extra: res.extra, hints: quiz.hints, mode: state.settings.mode,
+    sec: quiz.startedAt ? Math.round((Date.now() - quiz.startedAt) / 1000) : null,
+  };
+  (state.qRecords[q.id] = state.qRecords[q.id] || []).push(rec);
+  save(true);
+  Object.assign(quiz, { phase: 'result', lastInput: input, lastRec: rec });
+  showQuizResult(res, rec);
+  renderQuizLast(q);
+  scrollToTop();
+}
+function showQuizResult(res, rec) {
+  const q = quiz.list[quiz.pos];
+  $('#qScore').innerHTML = `${res.score}<small>%</small>`;
+  $('#qScore').style.color = scoreColor(res.score);
+  const parts = [`書けた <b>${res.eq}</b> / ${res.total} 字`, `抜け <b>${res.miss}</b>`, `誤り・余分 <b>${res.extra}</b>`, `ヒント <b>${rec.hints}</b> 回`];
+  if (rec.sec != null) parts.push(`時間 <b>${fmtSec(rec.sec)}</b>`);
+  $('#qStats').innerHTML = parts.map(p => `<span>${p}</span>`).join('');
+  $('#qDiff').innerHTML = res.html;
+  $('#qSource').textContent = `出典：${q.cat} ＞ ${q.title}`;
+  $('#qToBody').hidden = !itemOfQuestion(q);
+  $('#qWrite').hidden = true;
+  $('#qResult').hidden = false;
+}
+function quizNext() {
+  quiz.pos++;
+  if (quiz.pos >= quiz.list.length) { quiz.lap++; buildQuizList(); }  // 一周したら並べ直して最初から
+  showQuestion();
+  scrollToTop();
+}
+
+function quizKeydown(e) {
+  if ($('#qPlay').hidden) return;
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (quiz.phase === 'write') quizCheck(); else quizNext();
+  } else if (e.altKey && !e.metaKey && (e.code === 'KeyH' || e.code === 'KeyJ')) {
+    e.preventDefault();
+    quizHint(e.code === 'KeyH' ? 'chars' : 'sentence');
+  }
+}
+
+// 一覧・追加
+function renderQuizList() {
+  const qs = sortedQuestions();
+  $('#qTable').innerHTML = qs.length
+    ? qs.map(q => {
+        const last = lastQRec(q.id);
+        return `<tr><td class="muted" style="white-space:nowrap">${esc(shortCat(q.cat))}<br>${esc(q.title.split(/\s+/)[0])}</td><td>${esc(q.q)}</td>` +
+          `<td class="num">${last ? `<span class="badge ${scoreClass(last.score)}">${Math.round(last.score)}%</span>` : '未'}</td>` +
+          `<td style="text-align:right"><button class="small" data-qedit="${q.id}">編集</button></td></tr>`;
+      }).join('')
+    : '<tr><td colspan="4" class="muted">まだ問題がありません</td></tr>';
+}
+function fillQuizItemSelect(selectedId) {
+  $('#qfItem').innerHTML = state.items.length
+    ? state.items.map(it => `<option value="${it.id}">${esc(shortCat(it.cat || '未分類'))}／${esc(it.title)}</option>`).join('')
+    : '<option value="">（先に本文を登録してください）</option>';
+  if (selectedId) $('#qfItem').value = selectedId;
+  renderQuizSource();
+}
+function renderQuizSource() {
+  const it = getItem($('#qfItem').value);
+  $('#qfBody').innerHTML = it ? bodyHtml(bodyOf(it.text)) : '';
+  quiz.sel = '';
+  $('#qfSelMsg').textContent = '';
+}
+function resetQuizForm() {
+  quiz.editingId = null;
+  $('#qFormTitle').textContent = '問題を追加';
+  $('#qfQ').value = ''; $('#qfAnswer').value = '';
+  $('#qfDelete').hidden = true;
+  $('#qfMsg').textContent = '';
+  fillQuizItemSelect($('#qfItem').value);
+}
+function editQuestion(id) {
+  const q = state.questions.find(x => x.id === id);
+  if (!q) return;
+  quiz.editingId = id;
+  $('#qFormTitle').textContent = '問題を編集';
+  const it = itemOfQuestion(q);
+  fillQuizItemSelect(it ? it.id : null);
+  $('#qfQ').value = q.q; $('#qfAnswer').value = q.answer;
+  $('#qfDelete').hidden = false;
+  $('#qfMsg').textContent = '';
+  scrollToTop();
+}
+function saveQuestion() {
+  const it = getItem($('#qfItem').value);
+  const text = $('#qfQ').value.trim(), answer = cleanText($('#qfAnswer').value);
+  if (!it || !text || !answer) { $('#qfMsg').textContent = '出典・答え・問題文をすべて入力してください'; return; }
+  const now = Date.now();
+  if (quiz.editingId) {
+    Object.assign(state.questions.find(x => x.id === quiz.editingId), { cat: it.cat, title: it.title, q: text, answer, updatedAt: now });
+    $('#qfMsg').textContent = '更新しました';
+  } else {
+    state.questions.push({ id: 'q' + newId(), cat: it.cat, title: it.title, q: text, answer, created: now, updatedAt: now });
+    $('#qfQ').value = ''; $('#qfAnswer').value = '';
+    $('#qfMsg').textContent = `「${text}」を追加しました`;
+  }
+  save(true); renderQuizList(); renderList();
+}
+function deleteQuestion() {
+  const q = state.questions.find(x => x.id === quiz.editingId);
+  if (!q || !confirm(`「${q.q}」を削除します。この問題の記録も消えます。よろしいですか？`)) return;
+  state.questions = state.questions.filter(x => x.id !== q.id);
+  delete state.qRecords[q.id];
+  state.deleted[q.id] = Date.now();
+  save(true); resetQuizForm(); renderQuizList(); renderList();
+}
+function quizAfterRemoteChange() {
+  if (!$('#qList').hidden) return renderQuizList();
+  const q = quiz.list[quiz.pos];
+  if (q && !state.questions.some(x => x.id === q.id)) { buildQuizList(); showQuestion(); }
+  else if (q) renderQuizLast(q);
+}
+
+$('#qTabPlay').addEventListener('click', () => setQuizTab('play'));
+$('#qTabList').addEventListener('click', () => setQuizTab('list'));
+$('#qRange').addEventListener('change', e => { state.settings.qRange = e.target.value; save(); quiz.lap = 1; buildQuizList(); showQuestion(); });
+$('#qOrder').addEventListener('change', e => { state.settings.qOrder = e.target.value; save(); quiz.lap = 1; buildQuizList(); showQuestion(); });
+$('#qMode').addEventListener('change', e => {
+  state.settings.mode = e.target.value; $('#mode').value = e.target.value; $('#tocMode').value = e.target.value; save();
+  if (quiz.phase === 'result') {  // 判定方法を切り替えて見直す（記録はしない）
+    try { showQuizResult(compare(quiz.list[quiz.pos].answer, quiz.lastInput, state.settings.mode), quiz.lastRec); } catch (err) {}
+  }
+});
+$('#qInput').addEventListener('input', () => { if (!quiz.startedAt) quiz.startedAt = Date.now(); });
+$('#qHintChars').addEventListener('click', () => quizHint('chars'));
+$('#qHintSentence').addEventListener('click', () => quizHint('sentence'));
+$('#qCheck').addEventListener('click', quizCheck);
+$('#qSkip').addEventListener('click', quizNext);
+$('#qNext').addEventListener('click', quizNext);
+$('#qRetry').addEventListener('click', () => { showQuestion(); });
+$('#qToBody').addEventListener('click', () => { const it = itemOfQuestion(quiz.list[quiz.pos]); if (it) selectItem(it.id); });
+$('#qfItem').addEventListener('change', renderQuizSource);
+// 本文で選んだ範囲を覚えておく（ボタンを押したときに選択が外れても使えるように）
+document.addEventListener('selectionchange', () => {
+  const sel = document.getSelection();
+  if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+  if ($('#qfBody').contains(sel.anchorNode) && $('#qfBody').contains(sel.focusNode)) quiz.sel = sel.toString();
+});
+$('#qfUseSel').addEventListener('click', () => {
+  if (!quiz.sel.trim()) { $('#qfSelMsg').textContent = '本文の中をなぞって選んでください'; return; }
+  $('#qfAnswer').value = cleanText(quiz.sel);
+  $('#qfSelMsg').textContent = '答えに入れました';
+});
+$('#qfSave').addEventListener('click', saveQuestion);
+$('#qfNew').addEventListener('click', resetQuizForm);
+$('#qfDelete').addEventListener('click', deleteQuestion);
+$('#qTable').addEventListener('click', e => { const b = e.target.closest('[data-qedit]'); if (b) editQuestion(b.dataset.qedit); });
+
 // ---------- 同期（GitHub Gist） ----------
 // 本文・記録を非公開Gistの1ファイルに置き、各端末のデータと合算（マージ）して書き戻す。
 const SYNC_KEY = 'kanteiAnki.sync';   // { token, gistId, lastSync, pending } … この端末の中だけに保存
 const GIST_FILE = 'kantei-anki-data.json';
-const SYNC_FIELDS = ['items', 'deleted', 'records', 'tocRecords', 'tocStats', 'resetAt'];
+const SYNC_FIELDS = ['items', 'deleted', 'records', 'tocRecords', 'tocStats', 'resetAt', 'questions', 'qRecords'];
 let sync = (() => { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch (e) { return {}; } })();
 let syncState = sync.token ? 'idle' : 'off';
 let syncErr = '', syncing = false, syncAgain = false, syncTimer = null;
@@ -1609,18 +2011,24 @@ function mergeDocs(a, b) {
   // 項目：新しく更新された方を残す。削除の印の方が新しければ消す
   const deleted = { ...(a.deleted || {}) };
   for (const [id, t] of Object.entries(b.deleted || {})) deleted[id] = Math.max(deleted[id] || 0, t);
-  const byId = new Map();
-  for (const it of [...(a.items || []), ...(b.items || [])]) {
-    const prev = byId.get(it.id);
-    if (!prev || itemTime(it) > itemTime(prev)) byId.set(it.id, it);
-  }
-  const items = [...byId.values()]
-    .filter(it => !(deleted[it.id] >= itemTime(it)))
-    .sort((p, q) => (p.created || 0) - (q.created || 0) || (p.id < q.id ? -1 : 1));
+  const mergeList = (x = [], y = []) => {
+    const byId = new Map();
+    for (const it of [...x, ...y]) {
+      const prev = byId.get(it.id);
+      if (!prev || itemTime(it) > itemTime(prev)) byId.set(it.id, it);
+    }
+    return [...byId.values()]
+      .filter(it => !(deleted[it.id] >= itemTime(it)))
+      .sort((p, q) => (p.created || 0) - (q.created || 0) || (p.id < q.id ? -1 : 1));
+  };
+  const items = mergeList(a.items, b.items);
+  const questions = mergeList(a.questions, b.questions);
   const alive = new Set(items.map(it => it.id));
+  const aliveQ = new Set(questions.map(it => it.id));
   // 記録：両方を合わせる（同じ記録は1つに）。リセットより前の記録は捨てる
   const records = mergeRecordMap(a.records, b.records, resetAt, id => alive.has(id));
   const tocRecords = mergeRecordMap(a.tocRecords, b.tocRecords, resetAt, () => true);
+  const qRecords = mergeRecordMap(a.qRecords, b.qRecords, resetAt, id => aliveQ.has(id));
   // 目次の正誤回数：端末ごとの値のうち、回数の多い方（＝新しい方）を採る
   const tocStats = {};
   for (const d of [a, b]) {
@@ -1630,7 +2038,7 @@ function mergeDocs(a, b) {
       for (const [path, v] of Object.entries(stats)) if (!o[path] || v.t > o[path].t) o[path] = v;
     }
   }
-  return { v: 2, items, deleted, records, tocRecords, tocStats, resetAt };
+  return { v: 2, items, deleted, records, tocRecords, tocStats, resetAt, questions, qRecords };
 }
 
 async function gh(path, opts = {}) {
@@ -1725,6 +2133,7 @@ function afterRemoteChange() {
     if (toc.phase !== 'write') renderTocList();
     renderTocHistory();
   }
+  if (!$('#viewQuiz').hidden) quizAfterRemoteChange();
 }
 
 function setSyncState(st) {
@@ -1793,6 +2202,7 @@ $('#menuBtn').addEventListener('click', () => document.body.classList.toggle('na
 $('#scrim').addEventListener('click', closeNav);
 $('#itemList').addEventListener('click', e => {
   if (e.target.closest('[data-toc]')) return openToc();
+  if (e.target.closest('[data-quiz]')) return openQuiz();
   const b = e.target.closest('[data-id]'); if (b) selectItem(b.dataset.id);
 });
 $('#emptyToc').addEventListener('click', () => openToc());
@@ -1814,7 +2224,7 @@ $('#fadeOk').addEventListener('change', e => { state.settings.fadeOk = e.target.
 $('#mode').value = state.settings.mode;
 $('#mode').addEventListener('change', e => {
   state.settings.mode = e.target.value; save(); updateCount();
-  $('#tocMode').value = e.target.value;
+  $('#tocMode').value = e.target.value; $('#qMode').value = e.target.value;
   if (cur.phase === 'result') { // 判定方法を切り替えて見直す（記録はしない）
     const b = bodyOf(getItem(cur.id).text);
     try { showResult(compare(b.plain, cur.lastInput, state.settings.mode, b.flags), null); } catch (err) {}
@@ -1833,6 +2243,7 @@ $('#input').addEventListener('input', () => {
 document.addEventListener('keydown', e => {
   if (e.isComposing || e.keyCode === 229) return; // 日本語変換中は無視
   if (!$('#viewToc').hidden) return tocKeydown(e);
+  if (!$('#viewQuiz').hidden) return quizKeydown(e);
   if ($('#viewPractice').hidden) return;
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
     e.preventDefault();
@@ -1860,7 +2271,7 @@ $('#exportBtn').addEventListener('click', exportData);
 $('#importFile').addEventListener('change', e => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ''; });
 $('#resetRecords').addEventListener('click', () => {
   if (!confirm('本文と目次の練習記録をすべて消します（登録した本文は残ります）。よろしいですか？')) return;
-  state.records = {}; state.tocRecords = {}; state.tocStats = {}; state.resetAt = Date.now();
+  state.records = {}; state.tocRecords = {}; state.tocStats = {}; state.qRecords = {}; state.resetAt = Date.now();
   save(true); renderManage(); renderList();
 });
 
