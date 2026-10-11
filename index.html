@@ -115,6 +115,7 @@ textarea.sheet:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .d-extra { background: var(--extra-bg); color: var(--extra-text); text-decoration: line-through; border-radius: 2px; padding: 0 1px; font-size: .9em; }
 .d-ign { color: var(--muted); }
 .fade-ok .d-ok { opacity: .45; }
+.ryuui { border-left: 2px solid var(--muted); padding-left: 12px; margin: 4px 0; }
 details { margin-top: 14px; }
 summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 
@@ -285,6 +286,7 @@ body { -webkit-text-size-adjust: 100%; }
         </div>
         <div class="legend">
           <span>原文どおり書けた部分は通常表示</span>
+          <span id="legendRyuui"><span class="ryuui" style="padding-left:6px">左の線</span>＝留意事項</span>
           <span><span class="d-miss">赤</span>＝書けなかった・抜けた</span>
           <span><span class="d-extra">取消線</span>＝誤って書いた・余分</span>
           <span class="spacer"></span>
@@ -378,7 +380,7 @@ body { -webkit-text-size-adjust: 100%; }
         <label class="field"><span>分類（例：総論 第5章 ／ 留意事項 総論第7章）</span><input id="fCat" type="text" list="catList"></label>
         <datalist id="catList"></datalist>
         <label class="field"><span>タイトル（例：第1節 価格形成要因の分析）</span><input id="fTitle" type="text"></label>
-        <label class="field"><span>本文（基準・留意事項の原文を貼り付け）</span><textarea id="fText" rows="10"></textarea></label>
+        <label class="field"><span>本文（基準・留意事項の原文を貼り付け。留意事項は「〔留意事項〕」と「〔/留意事項〕」の行で囲むと区別して表示）</span><textarea id="fText" rows="10"></textarea></label>
         <div class="row">
           <button id="fSave" class="primary">保存</button>
           <button id="fNew">新規入力に戻す</button>
@@ -581,7 +583,48 @@ function diff(a, b, trimSuffix) {
   return ops;
 }
 
-function compare(orig, input, mode) {
+// ---------- 留意事項の印 ----------
+// 本文の「〔留意事項〕」〜「〔/留意事項〕」の行で囲んだ部分を留意事項として左に線を引いて表示する。
+// 印の行そのものは書かなくてよい（答え合わせ・ヒント・文字数の対象外）。
+const RYUUI_OPEN = '〔留意事項〕', RYUUI_CLOSE = '〔/留意事項〕';
+const bodyCache = new Map();
+function bodyOf(text) {
+  let b = bodyCache.get(text);
+  if (b) return b;
+  const lines = [], lineFlags = [];
+  let inside = false;
+  for (const line of text.split('\n')) {
+    const t = line.trim();
+    if (t === RYUUI_OPEN) { inside = true; continue; }
+    if (t === RYUUI_CLOSE) { inside = false; continue; }
+    lines.push(line); lineFlags.push(inside);
+  }
+  // 1文字ごとの印（行末の改行はその行と同じ扱い）
+  const flags = [];
+  lines.forEach((line, k) => {
+    for (let n = Array.from(line).length + (k < lines.length - 1 ? 1 : 0); n > 0; n--) flags.push(lineFlags[k]);
+  });
+  b = { plain: lines.join('\n'), flags: lineFlags.some(Boolean) ? flags : null };
+  bodyCache.set(text, b);
+  return b;
+}
+// 「読む」画面用：留意事項の部分を線付きのブロックにする
+function bodyHtml(b) {
+  if (!b.flags) return esc(b.plain);
+  const chars = Array.from(b.plain);
+  let html = '', i = 0;
+  while (i < chars.length) {
+    const f = b.flags[i];
+    let j = i;
+    while (j < chars.length && b.flags[j] === f) j++;
+    html += `<div${f ? ' class="ryuui"' : ''}>${esc(chars.slice(i, j).join('').replace(/\n$/, ''))}</div>`;
+    i = j;
+  }
+  return html;
+}
+
+// blocks を渡すと、留意事項の部分を線付きのブロックで表示する
+function compare(orig, input, mode, blocks = null) {
   const A = buildSeq(orig, mode), B = buildSeq(input, mode);
   const ops = diff(A.seq, B.seq, true);
   const status = new Array(A.chars.length).fill('ign');
@@ -592,21 +635,26 @@ function compare(orig, input, mode) {
     else if (op.t === 'del') { last = A.map[op.ai]; status[last] = 'miss'; miss++; }
     else { extra++; after.set(last, (after.get(last) || '') + B.chars[B.map[op.bi]]); }
   }
-  let html = '';
+  const edge = k => blocks && k > 0 && blocks[k] !== blocks[k - 1];
+  let html = blocks ? `<div${blocks[0] ? ' class="ryuui"' : ''}>` : '';
   const emitIns = k => { if (after.has(k)) html += `<span class="d-extra">${esc(after.get(k))}</span>`; };
   emitIns(-1);
   let i = 0;
   while (i < A.chars.length) {
+    if (edge(i)) html += `</div><div${blocks[i] ? ' class="ryuui"' : ''}>`;
     const st = status[i];
     let j = i, buf = '';
-    while (j < A.chars.length && status[j] === st) {
+    while (j < A.chars.length && status[j] === st && !(j > i && edge(j))) {
       buf += A.chars[j]; j++;
       if (after.has(j - 1)) break;
     }
+    // ブロックの終わりの改行は、ブロックの区切りで改行されるので表示しない
+    if (blocks && edge(j) && buf.endsWith('\n')) buf = buf.slice(0, -1);
     html += `<span class="d-${st}">${esc(buf)}</span>`;
     emitIns(j - 1);
     i = j;
   }
+  if (blocks) html += '</div>';
   const total = A.seq.length;
   return { html, eq, miss, extra, total, score: total ? Math.round(eq / total * 1000) / 10 : 0 };
 }
@@ -970,7 +1018,7 @@ function selectItem(id) {
   $('#pCat').textContent = it.cat || '未分類';
   $('#pTitle').textContent = it.title;
   setMobileTitle(it.title);
-  $('#readView').textContent = it.text;
+  $('#readView').innerHTML = bodyHtml(bodyOf(it.text));
   $('#input').value = state.drafts[id] || '';
   $('#hintBox').hidden = true;
   setPhase('write');
@@ -991,18 +1039,19 @@ function setPhase(p) {
 function updateCount() {
   const it = getItem(cur.id); if (!it) return;
   const mode = state.settings.mode;
-  $('#charCount').textContent = `${buildSeq($('#input').value, mode).seq.length} / ${buildSeq(it.text, mode).seq.length} 字`;
+  $('#charCount').textContent = `${buildSeq($('#input').value, mode).seq.length} / ${buildSeq(bodyOf(it.text).plain, mode).seq.length} 字`;
 }
 
 function giveHint(kind) {
   if (cur.phase !== 'write') return;
   const it = getItem(cur.id); if (!it) return;
   const input = $('#input').value;
-  const chars = Array.from(it.text);
+  const body = bodyOf(it.text).plain;
+  const chars = Array.from(body);
   let h = cur.hint;
   if (!h || h.input !== input || h.mode !== state.settings.mode) {
     let pos = 0;
-    try { pos = hintPosition(it.text, input, state.settings.mode); } catch (e) { pos = 0; }
+    try { pos = hintPosition(body, input, state.settings.mode); } catch (e) { pos = 0; }
     h = { input, mode: state.settings.mode, pos, end: pos };
   }
   h.end = kind === 'chars' ? advanceChars(chars, h.end, 5) : advanceSentence(chars, h.end);
@@ -1025,7 +1074,8 @@ function doCheck() {
   const input = $('#input').value;
   if (!input.trim()) { $('#input').focus(); return; }
   let res;
-  try { res = compare(it.text, input, state.settings.mode); }
+  const b = bodyOf(it.text);
+  try { res = compare(b.plain, input, state.settings.mode, b.flags); }
   catch (e) { alert('文章が長すぎて比較できません。項目をいくつかに分けて登録してください。'); return; }
   const rec = {
     at: Date.now(), score: res.score, miss: res.miss, extra: res.extra,
@@ -1055,6 +1105,7 @@ function showResult(res, rec) {
   }
   $('#rStats').innerHTML = parts.map(p => `<span>${p}</span>`).join('');
   $('#diffView').innerHTML = res.html;
+  $('#legendRyuui').hidden = !res.html.includes('class="ryuui"');
   $('#diffView').classList.toggle('fade-ok', !!state.settings.fadeOk);
   $('#myAnswer').textContent = cur.lastInput;
 }
@@ -1135,7 +1186,7 @@ function renderManage() {
   $('#catList').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
   $('#manageTable').innerHTML = state.items.length
     ? state.items.map(it => `<tr><td>${esc(it.cat || '未分類')}</td><td>${esc(it.title)}</td>` +
-        `<td class="num">${buildSeq(it.text, 'strict').seq.length.toLocaleString()}</td>` +
+        `<td class="num">${buildSeq(bodyOf(it.text).plain, 'strict').seq.length.toLocaleString()}</td>` +
         `<td class="num">${(state.records[it.id] || []).length}回</td>` +
         `<td style="text-align:right"><button class="small" data-edit="${it.id}">編集</button></td></tr>`).join('')
     : '<tr><td colspan="5" class="muted">まだ登録がありません</td></tr>';
@@ -1667,7 +1718,7 @@ function afterRemoteChange() {
   if (!$('#viewPractice').hidden) {
     const it = getItem(cur.id);
     if (!it) return showHome();
-    $('#readView').textContent = it.text;
+    $('#readView').innerHTML = bodyHtml(bodyOf(it.text));
     renderHistory();
   }
   if (!$('#viewToc').hidden) {
@@ -1765,7 +1816,8 @@ $('#mode').addEventListener('change', e => {
   state.settings.mode = e.target.value; save(); updateCount();
   $('#tocMode').value = e.target.value;
   if (cur.phase === 'result') { // 判定方法を切り替えて見直す（記録はしない）
-    try { showResult(compare(getItem(cur.id).text, cur.lastInput, state.settings.mode), null); } catch (err) {}
+    const b = bodyOf(getItem(cur.id).text);
+    try { showResult(compare(b.plain, cur.lastInput, state.settings.mode, b.flags), null); } catch (err) {}
   }
 });
 
