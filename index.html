@@ -99,7 +99,9 @@ textarea.sheet { resize: vertical; display: block; }
 textarea.sheet:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .toolbar { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 
-.hint-box { margin-top: 12px; padding: 12px 16px; border-radius: 10px; background: var(--hint-bg); font-size: 16px; line-height: 1.8; }
+.hint-box { position: relative; margin-top: 12px; padding: 12px 44px 12px 16px; border-radius: 10px; background: var(--hint-bg); font-size: 16px; line-height: 1.8; }
+.hint-close { position: absolute; top: 4px; right: 4px; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 6px 10px; }
+.hint-close:hover { color: var(--text); }
 .hint-box .label { font-size: 12px; color: var(--muted); display: block; }
 .hint-box .ctx { color: var(--muted); }
 .hint-box mark { background: none; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
@@ -153,7 +155,8 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--mut
 .toc-name { flex: 1; min-width: 0; }
 .toc-in { flex: 1; min-width: 0; font: inherit; font-weight: 400; padding: 4px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); }
 .toc-in:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--panel); }
-.toc-hint { flex-basis: 100%; margin-left: 3.2em; font-size: 14px; font-weight: 400; background: var(--hint-bg); padding: 2px 10px; border-radius: 6px; }
+.toc-hint { position: relative; flex-basis: 100%; margin-left: 3.2em; font-size: 14px; font-weight: 400; background: var(--hint-bg); padding: 2px 36px 2px 10px; border-radius: 6px; }
+.toc-hint .hint-close { top: 0; right: 0; font-size: 15px; padding: 4px 10px; }
 .toc-hint .ctx { color: var(--muted); }
 .toc-hint mark { background: none; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .toc-row .mark { flex: none; width: 1.4em; text-align: center; font-weight: 700; }
@@ -776,6 +779,22 @@ function hintPosition(orig, input, mode) {
   for (let k = runs.length - 1; k >= 0; k--) if (runs[k].len >= 3) { pick = runs[k]; break; }
   return A.map[pick.end] + 1;
 }
+// ヒントで見せた部分の、判定の対象になる最後の文字の直後（空白・ゆるいモードの句読点は除く）
+function hintGoal(chars, h, mode) {
+  for (let i = h.end - 1; i >= h.pos; i--) {
+    const c = chars[i];
+    if (/\s/.test(c) || (mode === 'loose' && PUNCT.has(c.normalize('NFKC')))) continue;
+    return i + 1;
+  }
+  return null;
+}
+// 書いた文章が、ヒントで見せた部分の最後まで届いたか
+function hintReached(text, input, h, mode) {
+  const goal = hintGoal(Array.from(text), h, mode);
+  if (goal == null || !input.trim()) return false;
+  try { return hintPosition(text, input, mode) >= goal; } catch (e) { return false; }
+}
+
 function advanceChars(chars, from, n) {
   let i = from, c = 0;
   while (i < chars.length && c < n) { if (!/\s/.test(chars[i])) c++; i++; }
@@ -1142,6 +1161,7 @@ function updateCount() {
   $('#charCount').textContent = `${buildSeq($('#input').value, mode).seq.length} / ${buildSeq(bodyOf(it.text).plain, mode).seq.length} 字`;
 }
 
+const HINT_CLOSE = '<button class="hint-close" aria-label="ヒントを消す" title="ヒントを消す（Esc）">×</button>';
 function giveHint(kind) {
   if (cur.phase !== 'write') return;
   const it = getItem(cur.id); if (!it) return;
@@ -1160,14 +1180,16 @@ function giveHint(kind) {
   const box = $('#hintBox');
   box.hidden = false;
   if (h.end <= h.pos) {
-    box.innerHTML = '<span class="label">ヒント</span>ここで原文は終わりです。';
+    box.innerHTML = '<span class="label">ヒント</span>ここで原文は終わりです。' + HINT_CLOSE;
     return;
   }
   const before = chars.slice(Math.max(0, h.pos - 12), h.pos).join('').replace(/\s+/g, ' ');
   const shown = chars.slice(h.pos, h.end).join('');
-  box.innerHTML = `<span class="label">ヒント（この項目で${cur.hintsUsed}回目・もう一度押すと続きを表示）</span>` +
-    `<span class="ctx">${h.pos > 12 ? '…' : ''}${esc(before)}</span><mark>${esc(shown)}</mark>`;
+  box.innerHTML = `<span class="label">ヒント（この項目で${cur.hintsUsed}回目・もう一度押すと続きを表示。書き終えると消えます）</span>` +
+    `<span class="ctx">${h.pos > 12 ? '…' : ''}${esc(before)}</span><mark>${esc(shown)}</mark>` + HINT_CLOSE;
 }
+// ヒントを消す。次にヒントを押したときは、そのとき書いているところから表示する
+function hideBodyHint() { $('#hintBox').hidden = true; cur.hint = null; }
 
 function doCheck() {
   const it = getItem(cur.id); if (!it) return;
@@ -1552,9 +1574,9 @@ function tocHint(kind) {
   toc.hints++;
   const box = el.parentElement.querySelector('.toc-hint');
   box.hidden = false;
-  box.innerHTML = h.end <= h.pos ? 'この見出しはここまでです'
+  box.innerHTML = (h.end <= h.pos ? 'この見出しはここまでです'
     : `<span class="ctx">${esc(chars.slice(Math.max(0, h.pos - 8), h.pos).join(''))}</span>` +
-      `<mark>${esc(chars.slice(h.pos, h.end).join(''))}</mark>${h.end < chars.length ? '…' : ''}`;
+      `<mark>${esc(chars.slice(h.pos, h.end).join(''))}</mark>${h.end < chars.length ? '…' : ''}`) + HINT_CLOSE;
   el.focus({ preventScroll: true });
   ensureVisible(el);
 }
@@ -1640,9 +1662,14 @@ function tocKeydown(e) {
 }
 
 let tocDraftTimer = null;
+function hideTocHint(box) { box.hidden = true; toc.hint = null; }
 $('#tocList').addEventListener('input', e => {
   if (!e.target.classList.contains('toc-in')) return;
   if (!toc.startedAt) toc.startedAt = Date.now();
+  // ヒントで見せた部分まで書いたら、ヒントを消す
+  const box = e.target.parentElement.querySelector('.toc-hint'), h = toc.hint;
+  if (!box.hidden && h && h.path === e.target.dataset.path &&
+      hintReached(TOC_BY_PATH.get(h.path).name, e.target.value, h, state.settings.mode)) hideTocHint(box);
   updateTocCount();
   clearTimeout(tocDraftTimer);
   const k = tocKey(), vals = tocValues();
@@ -1804,11 +1831,12 @@ function quizHint(kind) {
   quiz.hints++;
   const box = $('#qHintBox');
   box.hidden = false;
-  if (h.end <= h.pos) { box.innerHTML = '<span class="label">ヒント</span>答えはここまでです。'; return; }
+  if (h.end <= h.pos) { box.innerHTML = '<span class="label">ヒント</span>答えはここまでです。' + HINT_CLOSE; return; }
   const before = chars.slice(Math.max(0, h.pos - 12), h.pos).join('').replace(/\s+/g, ' ');
-  box.innerHTML = `<span class="label">ヒント（${quiz.hints}回目・もう一度押すと続きを表示）</span>` +
-    `<span class="ctx">${h.pos > 12 ? '…' : ''}${esc(before)}</span><mark>${esc(chars.slice(h.pos, h.end).join(''))}</mark>`;
+  box.innerHTML = `<span class="label">ヒント（${quiz.hints}回目・もう一度押すと続きを表示。書き終えると消えます）</span>` +
+    `<span class="ctx">${h.pos > 12 ? '…' : ''}${esc(before)}</span><mark>${esc(chars.slice(h.pos, h.end).join(''))}</mark>` + HINT_CLOSE;
 }
+function hideQuizHint() { $('#qHintBox').hidden = true; quiz.hint = null; }
 
 function quizCheck() {
   const q = quiz.list[quiz.pos];
@@ -1945,7 +1973,16 @@ $('#qMode').addEventListener('change', e => {
     try { showQuizResult(compare(quiz.list[quiz.pos].answer, quiz.lastInput, state.settings.mode), quiz.lastRec); } catch (err) {}
   }
 });
-$('#qInput').addEventListener('input', () => { if (!quiz.startedAt) quiz.startedAt = Date.now(); });
+let qHintTimer = null;
+$('#qInput').addEventListener('input', () => {
+  if (!quiz.startedAt) quiz.startedAt = Date.now();
+  clearTimeout(qHintTimer);
+  if ($('#qHintBox').hidden || !quiz.hint) return;
+  qHintTimer = setTimeout(() => {  // ヒントで見せた部分まで書いたら、ヒントを消す
+    const q = quiz.list[quiz.pos];
+    if (q && quiz.hint && hintReached(q.answer, $('#qInput').value, quiz.hint, state.settings.mode)) hideQuizHint();
+  }, 250);
+});
 $('#qHintChars').addEventListener('click', () => quizHint('chars'));
 $('#qHintSentence').addEventListener('click', () => quizHint('sentence'));
 $('#qCheck').addEventListener('click', quizCheck);
@@ -2232,16 +2269,49 @@ $('#mode').addEventListener('change', e => {
 });
 
 let draftTimer = null;
+let hintTimer = null;
 $('#input').addEventListener('input', () => {
   if (!cur.startedAt) cur.startedAt = Date.now();
   updateCount();
+  clearTimeout(hintTimer);
+  if (!$('#hintBox').hidden && cur.hint) {
+    hintTimer = setTimeout(() => {  // ヒントで見せた部分まで書いたら、ヒントを消す（長文は少し待ってから判定）
+      const it = getItem(cur.id);
+      if (it && cur.hint && hintReached(bodyOf(it.text).plain, $('#input').value, cur.hint, state.settings.mode)) hideBodyHint();
+    }, 250);
+  }
   clearTimeout(draftTimer);
   const id = cur.id, val = $('#input').value;
   draftTimer = setTimeout(() => { if (val) state.drafts[id] = val; else delete state.drafts[id]; save(); }, 400);
 });
 
+// ヒントの「×」：消したあと、書いていた欄に戻る
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.hint-close');
+  if (!btn) return;
+  if (btn.closest('#hintBox')) { hideBodyHint(); $('#input').focus(); }
+  else if (btn.closest('#qHintBox')) { hideQuizHint(); $('#qInput').focus(); }
+  else {
+    const box = btn.closest('.toc-hint');
+    hideTocHint(box);
+    box.parentElement.querySelector('.toc-in').focus({ preventScroll: true });
+  }
+});
+// Esc：表示中のヒントを消す
+function hideVisibleHint() {
+  if (!$('#viewPractice').hidden && !$('#hintBox').hidden) { hideBodyHint(); return true; }
+  if (!$('#viewQuiz').hidden && !$('#qHintBox').hidden) { hideQuizHint(); return true; }
+  if (!$('#viewToc').hidden) {
+    const boxes = [...document.querySelectorAll('.toc-hint')].filter(b => !b.hidden);
+    boxes.forEach(hideTocHint);
+    return boxes.length > 0;
+  }
+  return false;
+}
+
 document.addEventListener('keydown', e => {
-  if (e.isComposing || e.keyCode === 229) return; // 日本語変換中は無視
+  if (e.isComposing || e.keyCode === 229) return; // 日本語変換中は無視（変換の取り消しの Esc もここで除外される）
+  if (e.key === 'Escape' && hideVisibleHint()) { e.preventDefault(); return; }
   if (!$('#viewToc').hidden) return tocKeydown(e);
   if (!$('#viewQuiz').hidden) return quizKeydown(e);
   if ($('#viewPractice').hidden) return;
