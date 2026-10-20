@@ -761,24 +761,39 @@ function compare(orig, input, mode, blocks = null) {
   return { html, eq, miss, extra, total, score: total ? Math.round(eq / total * 1000) / 10 : 0 };
 }
 
-// 書いた文章が原文のどこまで進んでいるかを推定（原文の文字位置を返す）
+// 書いた文章（カーソルより前）が、原文のどこまで進んでいるかを推定する（原文の文字位置を返す）。
+// 1) 書いた文章と「原文の先頭から k 文字目まで」を比べ、書き間違い・抜け・余分の合計（編集距離）が
+//    最も少ない k を選ぶ。原文を大きく飛ばすとそのぶん「抜け」が増えるので、同じ言い回しが
+//    後ろにあっても、そちらへ飛ばない。同点なら後ろを採る。
+// 2) その前後30文字の中で、書いた文章の末尾（2文字以上）と一致する所があれば、そこに合わせる。
 function hintPosition(orig, input, mode) {
   const A = buildSeq(orig, mode), B = buildSeq(input, mode);
-  if (!A.seq.length || !B.seq.length) return 0;
-  const ops = diff(A.seq, B.seq, false);
-  const runs = [];
-  let run = null;
-  for (const op of ops) {
-    if (op.t === 'eq') { if (run) { run.end = op.ai; run.len++; } else run = { end: op.ai, len: 1 }; }
-    else if (run) { runs.push(run); run = null; }
+  const a = A.seq, b = B.seq, n = a.length;
+  if (!n || !b.length) return 0;
+  let prev = new Int32Array(n + 1), curr = new Int32Array(n + 1);
+  for (let k = 0; k <= n; k++) prev[k] = k;
+  for (let j = 1; j <= b.length; j++) {
+    curr[0] = j;
+    const bj = b[j - 1];
+    for (let k = 1; k <= n; k++) {
+      const sub = prev[k - 1] + (a[k - 1] === bj ? 0 : 1), extra = prev[k] + 1, missing = curr[k - 1] + 1;
+      curr[k] = sub < extra ? (sub < missing ? sub : missing) : (extra < missing ? extra : missing);
+    }
+    [prev, curr] = [curr, prev];
   }
-  if (run) runs.push(run);
-  if (!runs.length) return 0;
-  // 1〜2文字だけの偶然の一致（「の」など）に引っ張られないよう、3文字以上続いた一致を優先
-  let pick = runs[runs.length - 1];
-  for (let k = runs.length - 1; k >= 0; k--) if (runs[k].len >= 3) { pick = runs[k]; break; }
-  return A.map[pick.end] + 1;
+  let best = 0;
+  for (let k = 1; k <= n; k++) if (prev[k] <= prev[best]) best = k;
+  let snap = best, snapLen = 1;
+  for (let k = Math.max(1, best - 30); k <= Math.min(n, best + 30); k++) {
+    let L = 0;
+    while (L < b.length && L < k && a[k - 1 - L] === b[b.length - 1 - L]) L++;
+    if (L > snapLen || (L === snapLen && L >= 2 && Math.abs(k - best) < Math.abs(snap - best))) { snap = k; snapLen = L; }
+  }
+  if (snapLen >= 2) best = snap;
+  return best ? A.map[best - 1] + 1 : 0;
 }
+// 入力欄のカーソルより前の文字（途中を書き直しているときは、その場所のヒントを出すため）
+const beforeCursor = el => (el.selectionStart == null ? el.value : el.value.slice(0, el.selectionStart));
 // ヒントで見せた部分の、判定の対象になる最後の文字の直後（空白・ゆるいモードの句読点は除く）
 function hintGoal(chars, h, mode) {
   for (let i = h.end - 1; i >= h.pos; i--) {
@@ -1165,7 +1180,7 @@ const HINT_CLOSE = '<button class="hint-close" aria-label="ヒントを消す" t
 function giveHint(kind) {
   if (cur.phase !== 'write') return;
   const it = getItem(cur.id); if (!it) return;
-  const input = $('#input').value;
+  const input = beforeCursor($('#input'));
   const body = bodyOf(it.text).plain;
   const chars = Array.from(body);
   let h = cur.hint;
@@ -1562,7 +1577,7 @@ function tocHint(kind) {
   const el = (toc.focus && document.body.contains(toc.focus)) ? toc.focus
     : [...document.querySelectorAll('.toc-in')].find(x => !x.value);
   if (!el) return;
-  const n = TOC_BY_PATH.get(el.dataset.path), v = el.value, mode = state.settings.mode;
+  const n = TOC_BY_PATH.get(el.dataset.path), v = beforeCursor(el), mode = state.settings.mode;
   const chars = Array.from(n.name);
   let h = toc.hint;
   if (!h || h.path !== n.path || h.input !== v || h.mode !== mode) {
@@ -1669,7 +1684,7 @@ $('#tocList').addEventListener('input', e => {
   // ヒントで見せた部分まで書いたら、ヒントを消す
   const box = e.target.parentElement.querySelector('.toc-hint'), h = toc.hint;
   if (!box.hidden && h && h.path === e.target.dataset.path &&
-      hintReached(TOC_BY_PATH.get(h.path).name, e.target.value, h, state.settings.mode)) hideTocHint(box);
+      hintReached(TOC_BY_PATH.get(h.path).name, beforeCursor(e.target), h, state.settings.mode)) hideTocHint(box);
   updateTocCount();
   clearTimeout(tocDraftTimer);
   const k = tocKey(), vals = tocValues();
@@ -1818,7 +1833,7 @@ function renderQuizLast(q) {
 function quizHint(kind) {
   const q = quiz.list[quiz.pos];
   if (!q || quiz.phase !== 'write') return;
-  const input = $('#qInput').value, mode = state.settings.mode;
+  const input = beforeCursor($('#qInput')), mode = state.settings.mode;
   const chars = Array.from(q.answer);
   let h = quiz.hint;
   if (!h || h.input !== input || h.mode !== mode) {
@@ -1980,7 +1995,7 @@ $('#qInput').addEventListener('input', () => {
   if ($('#qHintBox').hidden || !quiz.hint) return;
   qHintTimer = setTimeout(() => {  // ヒントで見せた部分まで書いたら、ヒントを消す
     const q = quiz.list[quiz.pos];
-    if (q && quiz.hint && hintReached(q.answer, $('#qInput').value, quiz.hint, state.settings.mode)) hideQuizHint();
+    if (q && quiz.hint && hintReached(q.answer, beforeCursor($('#qInput')), quiz.hint, state.settings.mode)) hideQuizHint();
   }, 250);
 });
 $('#qHintChars').addEventListener('click', () => quizHint('chars'));
@@ -2277,7 +2292,7 @@ $('#input').addEventListener('input', () => {
   if (!$('#hintBox').hidden && cur.hint) {
     hintTimer = setTimeout(() => {  // ヒントで見せた部分まで書いたら、ヒントを消す（長文は少し待ってから判定）
       const it = getItem(cur.id);
-      if (it && cur.hint && hintReached(bodyOf(it.text).plain, $('#input').value, cur.hint, state.settings.mode)) hideBodyHint();
+      if (it && cur.hint && hintReached(bodyOf(it.text).plain, beforeCursor($('#input')), cur.hint, state.settings.mode)) hideBodyHint();
     }, 250);
   }
   clearTimeout(draftTimer);
