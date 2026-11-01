@@ -1388,9 +1388,23 @@ function bulkImport(src) {
     if (same) { same.text = p.text; same.updatedAt = now; updated++; }
     else { state.items.push({ id: newId() + k, ...p, created: now + k, updatedAt: now }); added++; }
   });
+  // 同じ分類なのにファイルにない項目（項目を分け直す前の古い項目など）は、確認して削除する
+  let removed = 0;
+  const cats = new Set(parsed.map(p => p.cat).filter(Boolean));
+  for (const cat of cats) {
+    const stale = state.items.filter(it => it.cat === cat && !parsed.some(p => p.cat === cat && p.title === it.title));
+    if (!stale.length) continue;
+    if (!confirm(`「${cat}」には、このファイルにない項目があります。\n${stale.map(it => '・' + it.title).join('\n')}\n\n削除しますか？（その項目の練習の記録も消えます）`)) continue;
+    for (const it of stale) {
+      state.items = state.items.filter(x => x.id !== it.id);
+      delete state.records[it.id]; delete state.drafts[it.id];
+      state.deleted[it.id] = now;
+      removed++;
+    }
+  }
   save(true); renderManage(); renderList();
   if (typeof src !== 'string') $('#bulkText').value = '';
-  $('#bulkMsg').textContent = `${added}件を登録しました` + (updated ? `（${updated}件は本文を更新）` : '');
+  $('#bulkMsg').textContent = `${added}件を登録しました` + (updated ? `（${updated}件は本文を更新）` : '') + (removed ? `（${removed}件を削除）` : '');
 }
 function exportData() {
   const d = new Date();
@@ -1466,10 +1480,12 @@ function latestTocRecord() {
 }
 // 目次の章・節に対応する本文の項目（章は「前文」）
 function itemForNode(n) {
-  if (n.lv > 2) return null;
   const ck = nk(n.part + n.chap);
-  return state.items.find(it => nk(it.cat).startsWith(ck) &&
-    (n.lv === 2 ? nk(it.title).startsWith(nk(n.no)) : it.title.trim() === '前文')) || null;
+  const inChap = it => nk(it.cat).startsWith(ck);
+  if (n.lv === 1) return state.items.find(it => inChap(it) && it.title.trim() === '前文') || null;
+  if (n.lv === 2) return state.items.find(it => inChap(it) && nk(it.title).startsWith(nk(n.no))) || null;
+  // 節のない章で、見出しごとに項目を分けている場合（第４章の「Ⅰ 需要と供給の原則」など）
+  return state.items.find(it => inChap(it) && nk(it.title) === nk(n.no + n.name)) || null;
 }
 function bodyLink(n) {
   const it = itemForNode(n);
@@ -1746,12 +1762,16 @@ function importQuestions(text) {
   let added = 0, updated = 0;
   parsed.forEach((p, k) => {
     // 同じ出典・同じ問題文があれば答えだけ差し替える（記録は残す）
-    const same = state.questions.find(x => x.q === p.q && x.cat === p.cat && x.title === p.title);
-    if (same) { if (same.answer !== p.answer) { same.answer = p.answer; same.updatedAt = now; updated++; } }
+    // 同じ章の同じ問題文なら同じ問題とみなす（出典の項目を分け直したときも、記録を残して付け替える）
+    const same = state.questions.find(x => x.q === p.q && x.cat === p.cat && x.title === p.title)
+      || state.questions.find(x => x.q === p.q && x.cat === p.cat);
+    if (same) {
+      if (same.answer !== p.answer || same.title !== p.title) { same.answer = p.answer; same.title = p.title; same.updatedAt = now; updated++; }
+    }
     else { state.questions.push({ id: 'q' + newId() + k, ...p, created: now + k, updatedAt: now }); added++; }
   });
   save(true); renderList();
-  return `問題を${added}問登録しました` + (updated ? `（${updated}問の答えを更新）` : '');
+  return `問題を${added}問登録しました` + (updated ? `（${updated}問の答え・出典を更新）` : '');
 }
 
 const itemOfQuestion = q => state.items.find(it => nk(it.cat) === nk(q.cat) && nk(it.title) === nk(q.title)) || null;
