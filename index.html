@@ -1146,7 +1146,7 @@ function showView(name) {
 function selectItem(id) {
   const it = getItem(id);
   if (!it) return showHome();
-  cur = { id, phase: 'write', hintsUsed: 0, startedAt: null, hint: null, lastInput: '' };
+  cur = { id, phase: 'read', hintsUsed: 0, startedAt: null, hint: null, lastInput: '' };
   state.settings.lastId = id; save();
   showView('practice');
   $('#pCat').textContent = it.cat || '未分類';
@@ -1155,7 +1155,7 @@ function selectItem(id) {
   $('#readView').innerHTML = bodyHtml(bodyOf(it.text));
   $('#input').value = state.drafts[id] || '';
   $('#hintBox').hidden = true;
-  setPhase('write');
+  setPhase('read');  // 開いたときは「読む」から
   renderHistory(); renderList(); updateCount();
   scrollToTop();
 }
