@@ -117,7 +117,6 @@ textarea.sheet:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .d-extra { background: var(--extra-bg); color: var(--extra-text); text-decoration: line-through; border-radius: 2px; padding: 0 1px; font-size: .9em; }
 .d-ign { color: var(--muted); }
 .fade-ok .d-ok { opacity: .45; }
-.read-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; }
 #btnWake.on { background: var(--accent-weak); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .ryuui { border-left: 2px solid var(--muted); padding-left: 12px; margin: 4px 0; }
 details { margin-top: 14px; }
@@ -266,6 +265,8 @@ body { -webkit-text-size-adjust: 100%; }
             <button id="tabRead">読む</button>
             <button id="tabWrite">書く</button>
           </div>
+          <button id="btnWake" class="small" aria-pressed="false" title="この画面を開いている間、画面を消灯させない" hidden>画面を消さない</button>
+          <span id="wakeMsg" class="muted" style="font-size:12px"></span>
           <select id="mode" title="答え合わせの判定方法">
             <option value="strict">判定：厳密（句読点も見る）</option>
             <option value="loose">判定：ゆるい（句読点・括弧を無視）</option>
@@ -274,10 +275,6 @@ body { -webkit-text-size-adjust: 100%; }
       </div>
 
       <div id="readArea">
-        <div class="read-bar">
-          <button id="btnWake" class="small" aria-pressed="false" title="この画面を開いている間、画面を消灯させない">画面を消さない</button>
-          <span id="wakeMsg" class="muted"></span>
-        </div>
         <div id="readView" class="sheet"></div>
         <div class="toolbar"><span class="spacer"></span><button id="btnGoWrite" class="primary">書いてみる</button></div>
       </div>
@@ -1166,6 +1163,19 @@ function showWakeMsg(msg) {
   wakeMsgTimer = setTimeout(() => { $('#wakeMsg').textContent = ''; }, 4000);
 }
 
+// 判定方法の欄の文言：iPhone など幅の狭い画面では短くして、タブと1行に収める
+const MODE_LABELS = {
+  strict: ['判定：厳密（句読点も見る）', '判定：厳密'],
+  loose: ['判定：ゆるい（句読点・括弧を無視）', '判定：ゆるい'],
+};
+function applyModeLabels() {
+  const short = isMobile() ? 1 : 0;
+  for (const sel of ['#mode', '#tocMode', '#qMode']) {
+    for (const opt of $(sel).options) opt.textContent = MODE_LABELS[opt.value][short];
+  }
+}
+matchMedia('(max-width: 760px)').addEventListener('change', applyModeLabels);
+
 // ---------- 練習画面 ----------
 let cur = { id: null, phase: 'write', hintsUsed: 0, startedAt: null, hint: null, lastInput: '' };
 
@@ -1201,6 +1211,9 @@ function selectItem(id) {
 function setPhase(p) {
   cur.phase = p;
   if (p !== 'read') setWake(false);  // 「書く」などに移ったら、画面を消さない設定は解除
+  // 「読む」では画面を消さないボタン、「書く」では判定方法の欄を、タブの右に出す
+  $('#btnWake').hidden = p !== 'read';
+  $('#mode').hidden = p === 'read';
   $('#readArea').hidden = p !== 'read';
   $('#writeArea').hidden = p !== 'write';
   $('#resultArea').hidden = p !== 'result';
@@ -2420,6 +2433,7 @@ $('#resetRecords').addEventListener('click', () => {
   save(true); renderManage(); renderList();
 });
 
+applyModeLabels();
 showHome();
 setSyncState(syncState);
 if (sync.token) syncNow();
