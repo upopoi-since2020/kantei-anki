@@ -117,6 +117,8 @@ textarea.sheet:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .d-extra { background: var(--extra-bg); color: var(--extra-text); text-decoration: line-through; border-radius: 2px; padding: 0 1px; font-size: .9em; }
 .d-ign { color: var(--muted); }
 .fade-ok .d-ok { opacity: .45; }
+.read-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; }
+#btnWake.on { background: var(--accent-weak); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .ryuui { border-left: 2px solid var(--muted); padding-left: 12px; margin: 4px 0; }
 details { margin-top: 14px; }
 summary { cursor: pointer; color: var(--muted); font-size: 14px; }
@@ -272,6 +274,10 @@ body { -webkit-text-size-adjust: 100%; }
       </div>
 
       <div id="readArea">
+        <div class="read-bar">
+          <button id="btnWake" class="small" aria-pressed="false" title="この画面を開いている間、画面を消灯させない">画面を消さない</button>
+          <span id="wakeMsg" class="muted"></span>
+        </div>
         <div id="readView" class="sheet"></div>
         <div class="toolbar"><span class="spacer"></span><button id="btnGoWrite" class="primary">書いてみる</button></div>
       </div>
@@ -1129,6 +1135,37 @@ const scrollToTop = () => { scroller().scrollTop = 0; };
 function closeNav() { document.body.classList.remove('nav-open'); }
 function setMobileTitle(t) { $('#mobileTitle').textContent = t || '暗記ノート'; }
 
+// ---------- 画面を消さない（「読む」画面のボタン） ----------
+// ボタンを押したときだけオンにする。ほかのアプリへ切り替えるなどで iPhone が解除したら、ボタンもオフに戻す
+// （戻ってきたときは、もう一度押してもらう）
+let wakeLock = null, wakeMsgTimer = null;
+async function setWake(on) {
+  if (on) {
+    if (!('wakeLock' in navigator)) return showWakeMsg('この端末・ブラウザでは使えません');
+    try {
+      const lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => { if (wakeLock === lock) { wakeLock = null; renderWake(); } });
+      wakeLock = lock;
+    } catch (e) { wakeLock = null; showWakeMsg('画面を消さない設定にできませんでした'); }
+  } else if (wakeLock) {
+    const lock = wakeLock;
+    wakeLock = null;
+    try { await lock.release(); } catch (e) { /* すでに解除済み */ }
+  }
+  renderWake();
+}
+function renderWake() {
+  const on = !!wakeLock;
+  $('#btnWake').classList.toggle('on', on);
+  $('#btnWake').textContent = on ? '画面を消さない：オン' : '画面を消さない';
+  $('#btnWake').setAttribute('aria-pressed', String(on));
+}
+function showWakeMsg(msg) {
+  $('#wakeMsg').textContent = msg;
+  clearTimeout(wakeMsgTimer);
+  wakeMsgTimer = setTimeout(() => { $('#wakeMsg').textContent = ''; }, 4000);
+}
+
 // ---------- 練習画面 ----------
 let cur = { id: null, phase: 'write', hintsUsed: 0, startedAt: null, hint: null, lastInput: '' };
 
@@ -1139,6 +1176,7 @@ function showView(name) {
   $('#viewToc').hidden = name !== 'toc';
   $('#viewQuiz').hidden = name !== 'quiz';
   closeNav();
+  if (name !== 'practice') setWake(false);  // 本文以外の画面に移ったら解除（別の項目の「読む」へは引き継ぐ）
   setMobileTitle({ toc: '目次', manage: '登録・管理', quiz: '問題' }[name]);
   if (name !== 'practice') { cur.id = null; renderList(); }
 }
@@ -1162,6 +1200,7 @@ function selectItem(id) {
 
 function setPhase(p) {
   cur.phase = p;
+  if (p !== 'read') setWake(false);  // 「書く」などに移ったら、画面を消さない設定は解除
   $('#readArea').hidden = p !== 'read';
   $('#writeArea').hidden = p !== 'write';
   $('#resultArea').hidden = p !== 'result';
@@ -2285,6 +2324,7 @@ $('#emptySample').addEventListener('click', addSample);
 $('#tabRead').addEventListener('click', () => setPhase('read'));
 $('#tabWrite').addEventListener('click', () => setPhase(cur.phase === 'result' ? 'result' : 'write'));
 $('#btnGoWrite').addEventListener('click', () => setPhase('write'));
+$('#btnWake').addEventListener('click', () => setWake(!wakeLock));
 $('#btnHintChars').addEventListener('click', () => giveHint('chars'));
 $('#btnHintSentence').addEventListener('click', () => giveHint('sentence'));
 $('#btnCheck').addEventListener('click', doCheck);
