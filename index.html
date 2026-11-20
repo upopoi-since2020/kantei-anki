@@ -1376,7 +1376,16 @@ function navTree(items) {
     if (m && !sec) { sec = { sec: m[1], key: `s:${cat}|${m[1]}`, items: [] }; ch.entries.push(sec); }
     if (sec) sec.items.push(it); else ch.entries.push({ item: it });
   }
-  for (const ch of chapters.values()) ch.entries = ch.entries.map(e => (e.sec && e.items.length === 1 ? { item: e.items[0] } : e));
+  // 前文 → 節の番号順（第１節、第２節…）に並べる。節のない項目（第４章の原則など）は元の順のまま
+  const secNo = e => {
+    const t = e.sec || (e.item && (e.item.title.match(SEC_RE) || [])[1]);
+    if (e.item && e.item.title.trim() === '前文') return -1;
+    return t ? parseInt(t.normalize('NFKC').replace(/\D/g, ''), 10) : Infinity;
+  };
+  for (const ch of chapters.values()) {
+    ch.entries = ch.entries.map(e => (e.sec && e.items.length === 1 ? { item: e.items[0] } : e));
+    ch.entries = ch.entries.map((e, i) => ({ e, i, n: secNo(e) })).sort((a, b) => a.n - b.n || a.i - b.i).map(x => x.e);
+  }
   return [...chapters.values()];
 }
 // 一覧と同じ並び順（「前の項目／次の項目」に使う）
