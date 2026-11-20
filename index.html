@@ -58,6 +58,27 @@ body {
 .b-mid { background: var(--mid-bg); color: var(--mid); }
 .b-bad { background: var(--bad-bg); color: var(--bad); }
 .side-empty { color: var(--muted); font-size: 13px; padding: 12px; }
+/* 一覧の折りたたみ（章 → 節 → 項目） */
+.nav-row { display: flex; width: 100%; align-items: center; gap: 6px; padding: 6px 8px; border: 0; background: none; color: inherit; border-radius: 8px; cursor: pointer; font: inherit; text-align: left; }
+.nav-row:hover { background: var(--bg); }
+.nav-row .ar { width: 14px; flex: none; color: var(--text); font-size: 12px; text-align: center; }
+.nav-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-ch { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+.nav-sec { font-size: 13px; font-weight: 600; padding-left: 22px; }
+.prog { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.item.nav-l1 { padding-left: 26px; }
+.item.in-sec { padding-left: 40px; }
+.item.ry { padding-top: 3px; padding-bottom: 3px; }
+.item.ry .t { font-size: 12.5px; color: var(--muted); }
+.item.ry .t::before { content: '└ '; }
+.item.ry.nav-l1 { padding-left: 38px; }
+.item.ry.in-sec { padding-left: 52px; }
+/* 本文の画面の「前の項目／次の項目」 */
+.item-nav { display: flex; gap: 8px; margin-top: 18px; }
+.item-nav button { flex: 1; min-width: 0; gap: 6px; font-size: 13px; }
+.item-nav .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-nav .dir { flex: none; color: var(--muted); }
+#navNext { justify-content: flex-end; }
 
 /* ---- main ---- */
 main { overflow: auto; padding: 28px 36px 80px; }
@@ -208,6 +229,8 @@ body { -webkit-text-size-adjust: 100%; }
   body.nav-open .sidebar { transform: none; box-shadow: 0 0 40px rgba(0, 0, 0, .25); }
   body.nav-open .scrim { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 25; }
   .item { padding: 10px 8px; }
+  .item.ry { padding-top: 8px; padding-bottom: 8px; }
+  .nav-row { padding-top: 9px; padding-bottom: 9px; }
   main { overflow: visible; padding: 14px 14px calc(24px + env(safe-area-inset-bottom)); }
   h2 { font-size: 19px; }
   .practice-head { margin-bottom: 10px; }
@@ -315,6 +338,11 @@ body { -webkit-text-size-adjust: 100%; }
           <button id="btnRetryKeep">続きから直す</button>
           <button id="btnRetry" class="primary">白紙からもう一度</button>
         </div>
+      </div>
+
+      <div class="item-nav">
+        <button id="navPrev"><span class="dir">◀</span><span class="t"></span></button>
+        <button id="navNext"><span class="t"></span><span class="dir">▶</span></button>
       </div>
 
       <section class="history">
@@ -1204,7 +1232,10 @@ function selectItem(id) {
   $('#input').value = state.drafts[id] || '';
   $('#hintBox').hidden = true;
   setPhase('read');  // 開いたときは「読む」から
-  renderHistory(); renderList(); updateCount();
+  revealInNav(it);
+  renderHistory(); renderList(); updateCount(); renderItemNav();
+  const row = $('#itemList .item.active');
+  if (row) row.scrollIntoView({ block: 'nearest' });
   scrollToTop();
 }
 
@@ -1328,34 +1359,111 @@ function renderHistory() {
 }
 
 // ---------- 一覧 ----------
+// 項目を「章 → 節 → 項目」に組み立てる。タイトルが「第１節」などで始まる項目を節にまとめる。
+// 節のない項目（前文、第４章の原則など）と、項目が1つだけの節は、章の直下に並べる。
+// 留意事項の項目（タイトルに〔留意事項〕を含む）は、その前の項目の下に字下げして表示する。
+const SEC_RE = /^(第[０-９0-9]+節)[\s　]*(.*)$/;
+const isRyuuiItem = it => it.title.includes('〔留意事項〕');
+function navTree(items) {
+  const chapters = new Map();
+  for (const it of items) {
+    const cat = it.cat || '未分類';
+    if (!chapters.has(cat)) chapters.set(cat, { cat, entries: [], items: [] });
+    const ch = chapters.get(cat);
+    ch.items.push(it);
+    const m = it.title.match(SEC_RE);
+    let sec = m && ch.entries.find(e => e.sec === m[1]);
+    if (m && !sec) { sec = { sec: m[1], key: `s:${cat}|${m[1]}`, items: [] }; ch.entries.push(sec); }
+    if (sec) sec.items.push(it); else ch.entries.push({ item: it });
+  }
+  for (const ch of chapters.values()) ch.entries = ch.entries.map(e => (e.sec && e.items.length === 1 ? { item: e.items[0] } : e));
+  return [...chapters.values()];
+}
+// 一覧と同じ並び順（「前の項目／次の項目」に使う）
+const navOrder = () => navTree(state.items).flatMap(ch => ch.entries.flatMap(e => (e.item ? [e.item] : e.items)));
+function secLabel(cat, sec) {
+  const [part, chap] = cat.split(/\s+/);
+  const n = TOC.find(x => x.lv === 2 && x.part === part && x.chap === chap && x.no === sec);
+  return n ? `${sec} ${n.name.replace(/^鑑定評価によって求める/, '')}` : sec;
+}
+function navName(it, inSec) {
+  const t = inSec ? it.title.replace(SEC_RE, '$2') : it.title;
+  if (!isRyuuiItem(it)) return t || it.title;
+  return '〔留意事項〕' + t.slice(t.indexOf('〔留意事項〕') + 6).replace(/^（(.*)）$/, '$1');
+}
+const navProgress = items => {
+  const done = items.filter(it => (state.records[it.id] || []).length).length;
+  return `<span class="prog" title="練習した項目／全項目">${done}/${items.length}</span>`;
+};
+function navItemRow(it, inSec) {
+  const recs = state.records[it.id] || [];
+  const last = recs[recs.length - 1];
+  const badge = last
+    ? `<span class="badge ${scoreClass(last.score)}" title="直近の正答率・練習${recs.length}回">${Math.round(last.score)}%</span>`
+    : '<span class="badge b-none">未</span>';
+  const cls = ['item', inSec ? 'in-sec' : 'nav-l1', isRyuuiItem(it) ? 'ry' : '', it.id === cur.id ? 'active' : ''].filter(Boolean).join(' ');
+  return `<button class="${cls}" data-id="${it.id}"><span class="t" title="${esc(it.title)}">${esc(navName(it, inSec))}</span>${badge}</button>`;
+}
+// 開いている項目の章・節を開く（ほかの章は閉じる）。開閉の状態は端末ごとに覚える
+function revealInNav(it) {
+  const open = state.settings.navOpen = state.settings.navOpen || {};
+  for (const k of Object.keys(open)) if (k.startsWith('c:')) open[k] = false;
+  open['c:' + (it.cat || '未分類')] = true;
+  const m = it.title.match(SEC_RE);
+  if (m) open[`s:${it.cat || '未分類'}|${m[1]}`] = true;
+}
+function toggleNav(key) {
+  const open = state.settings.navOpen = state.settings.navOpen || {};
+  const willOpen = !open[key];
+  if (key.startsWith('c:') && willOpen) for (const k of Object.keys(open)) if (k.startsWith('c:')) open[k] = false;  // 章を開いたら、ほかの章は閉じる
+  open[key] = willOpen;
+  save();
+  renderList();
+}
+
 function renderList() {
   const q = $('#search').value.trim();
-  const groups = new Map();
-  for (const it of state.items) {
-    if (q && !(it.cat + it.title + it.text).includes(q)) continue;
-    const g = it.cat || '未分類';
-    if (!groups.has(g)) groups.set(g, []);
-    groups.get(g).push(it);
-  }
+  const items = state.items.filter(it => !q || (it.cat + it.title + it.text).includes(q));
+  const open = state.settings.navOpen || {};
   const tocLast = latestTocRecord();
   let html = `<button class="item toc-entry${$('#viewToc').hidden ? '' : ' active'}" data-toc="1"><span class="t">目次</span>` +
     (tocLast ? `<span class="badge ${scoreClass(tocLast.score)}" title="直近の目次練習の正答率">${Math.round(tocLast.score)}%</span>` : '<span class="badge b-none">未</span>') +
     '</button>' +
     `<button class="item toc-entry${$('#viewQuiz').hidden ? '' : ' active'}" data-quiz="1"><span class="t">問題</span>` +
     `<span class="badge b-none" title="登録されている問題の数">${state.questions.length}問</span></button>`;
-  for (const [g, items] of groups) {
-    html += `<div class="group-name">${esc(g)}</div>`;
-    for (const it of items) {
-      const recs = state.records[it.id] || [];
-      const last = recs[recs.length - 1];
-      const badge = last
-        ? `<span class="badge ${scoreClass(last.score)}" title="直近の正答率・練習${recs.length}回">${Math.round(last.score)}%</span>`
-        : '<span class="badge b-none">未</span>';
-      html += `<button class="item${it.id === cur.id ? ' active' : ''}" data-id="${it.id}"><span class="t" title="${esc(it.title)}">${esc(it.title)}</span>${badge}</button>`;
+  for (const ch of navTree(items)) {
+    const chOpen = !!q || !!open['c:' + ch.cat];  // 絞り込み中は、該当する章・節をすべて開く
+    html += `<button class="nav-row nav-ch" data-nav="${esc('c:' + ch.cat)}" aria-expanded="${chOpen}">` +
+      `<span class="ar">${chOpen ? '▾' : '▸'}</span><span class="t" title="${esc(ch.cat)}">${esc(ch.cat)}</span>${navProgress(ch.items)}</button>`;
+    if (!chOpen) continue;
+    for (const e of ch.entries) {
+      if (e.item) { html += navItemRow(e.item, false); continue; }
+      const sOpen = !!q || !!open[e.key];
+      html += `<button class="nav-row nav-sec" data-nav="${esc(e.key)}" aria-expanded="${sOpen}">` +
+        `<span class="ar">${sOpen ? '▾' : '▸'}</span><span class="t">${esc(secLabel(ch.cat, e.sec))}</span>${navProgress(e.items)}</button>`;
+      if (sOpen) for (const it of e.items) html += navItemRow(it, true);
     }
   }
-  if (!groups.size) html += `<div class="side-empty">${q ? '該当する項目がありません' : '「登録・管理」から原文を登録してください'}</div>`;
+  if (!items.length) html += `<div class="side-empty">${q ? '該当する項目がありません' : '「登録・管理」から原文を登録してください'}</div>`;
   $('#itemList').innerHTML = html;
+}
+
+// 本文の画面の「前の項目／次の項目」（一覧と同じ順番。章をまたいでも進める）
+function renderItemNav() {
+  const list = navOrder(), i = list.findIndex(it => it.id === cur.id);
+  const here = getItem(cur.id);
+  const label = it => {
+    if (it.cat !== here.cat) return `${shortCat(it.cat || '')} ${it.title}`;
+    const m = it.title.match(SEC_RE), hm = here.title.match(SEC_RE);
+    if (isRyuuiItem(it) && (!m || (hm && m[1] === hm[1]))) return navName(it, true);  // 「〔留意事項〕①法令等」のように短く
+    return m && hm && m[1] === hm[1] ? it.title.replace(SEC_RE, '$2') : it.title;
+  };
+  for (const [btn, it] of [[$('#navPrev'), list[i - 1]], [$('#navNext'), list[i + 1]]]) {
+    btn.style.visibility = it ? 'visible' : 'hidden';
+    btn.dataset.id = it ? it.id : '';
+    btn.querySelector('.t').textContent = it ? label(it) : '';
+    btn.title = it ? it.title : '';
+  }
 }
 
 // ---------- 登録・管理 ----------
@@ -2368,6 +2476,8 @@ window.addEventListener('offline', () => { if (sync.token && !syncing) setSyncSt
 $('#menuBtn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
 $('#scrim').addEventListener('click', closeNav);
 $('#itemList').addEventListener('click', e => {
+  const nav = e.target.closest('[data-nav]');
+  if (nav) return toggleNav(nav.dataset.nav);
   if (e.target.closest('[data-toc]')) return openToc();
   if (e.target.closest('[data-quiz]')) return openQuiz();
   const b = e.target.closest('[data-id]'); if (b) selectItem(b.dataset.id);
@@ -2380,6 +2490,7 @@ $('#emptySample').addEventListener('click', addSample);
 $('#tabRead').addEventListener('click', () => setPhase('read'));
 $('#tabWrite').addEventListener('click', () => setPhase(cur.phase === 'result' ? 'result' : 'write'));
 $('#btnGoWrite').addEventListener('click', () => setPhase('write'));
+for (const id of ['#navPrev', '#navNext']) $(id).addEventListener('click', e => { const to = e.currentTarget.dataset.id; if (to) selectItem(to); });
 $('#btnWake').addEventListener('click', () => setWake(!wakeLock));
 $('#btnHintChars').addEventListener('click', () => giveHint('chars'));
 $('#btnHintSentence').addEventListener('click', () => giveHint('sentence'));
