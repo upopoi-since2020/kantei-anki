@@ -1531,13 +1531,25 @@ function latestTocRecord() {
   return latest;
 }
 // 目次の章・節に対応する本文の項目（章は「前文」）
+// 目次の見出しに対応する本文の項目（複数あれば最初の項目）
+//   章：「前文」、節：タイトルが「第１節」などで始まる項目
+//   Ⅰ・１．：タイトルの語（空白・「・」で区切る）に、節・Ⅰ・１．の番号がすべて入っている項目
+//     例：第５章の目次「第１節 → Ⅴ」は「第１節 Ⅳ・Ⅴ 条件設定の制限・依頼者との合意」へ
+//     １．に当たる項目がなければ、その上のⅠの項目へ（例：「第３節 Ⅱ 賃料」の中の１．正常賃料）
+const ROMAN_NO = /^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+$/;
+function titleHasNos(title, nos) {
+  const words = title.split(/[\s・]+/);
+  return nos.every(no => words.some(w => (ROMAN_NO.test(no) ? w === no : w.startsWith(no))));
+}
 function itemForNode(n) {
   const ck = nk(n.part + n.chap);
-  const inChap = it => nk(it.cat).startsWith(ck);
-  if (n.lv === 1) return state.items.find(it => inChap(it) && it.title.trim() === '前文') || null;
-  if (n.lv === 2) return state.items.find(it => inChap(it) && nk(it.title).startsWith(nk(n.no))) || null;
-  // 節のない章で、見出しごとに項目を分けている場合（第４章の「Ⅰ 需要と供給の原則」など）
-  return state.items.find(it => inChap(it) && nk(it.title) === nk(n.no + n.name)) || null;
+  const inChap = state.items.filter(it => nk(it.cat).startsWith(ck));
+  if (n.lv === 1) return inChap.find(it => it.title.trim() === '前文') || null;
+  if (n.lv === 2) return inChap.find(it => nk(it.title).startsWith(nk(n.no))) || null;
+  const nos = n.path.split('/').slice(2);  // 例：["第１節", "Ⅰ", "１．"]（節のない章は ["Ⅰ"]）
+  const hit = inChap.find(it => titleHasNos(it.title, nos));
+  if (hit || n.lv < 4) return hit || null;
+  return inChap.find(it => titleHasNos(it.title, nos.slice(0, -1))) || null;
 }
 function bodyLink(n) {
   const it = itemForNode(n);
@@ -1822,18 +1834,39 @@ function importQuestions(text) {
     }
     else { state.questions.push({ id: 'q' + newId() + k, ...p, created: now + k, updatedAt: now }); added++; }
   });
+  // 同じ章なのにファイルにない問題（削除・分割した古い問題）は、確認して削除する
+  let removed = 0;
+  for (const cat of new Set(parsed.map(p => p.cat))) {
+    const stale = state.questions.filter(x => x.cat === cat && !parsed.some(p => p.cat === cat && p.q === x.q));
+    if (!stale.length) continue;
+    if (!confirm(`「${cat}」には、このファイルにない問題があります。\n${stale.map(x => '・' + x.q).join('\n')}\n\n削除しますか？（その問題の練習の記録も消えます）`)) continue;
+    for (const x of stale) {
+      state.questions = state.questions.filter(y => y.id !== x.id);
+      delete state.qRecords[x.id];
+      state.deleted[x.id] = now;
+      removed++;
+    }
+  }
   save(true); renderList();
-  return `問題を${added}問登録しました` + (updated ? `（${updated}問の答え・出典を更新）` : '');
+  return `問題を${added}問登録しました` + (updated ? `（${updated}問の答え・出典を更新）` : '') + (removed ? `（${removed}問を削除）` : '');
 }
 
 const itemOfQuestion = q => state.items.find(it => nk(it.cat) === nk(q.cat) && nk(it.title) === nk(q.title)) || null;
 const lastQRec = id => { const r = state.qRecords[id]; return r && r.length ? r[r.length - 1] : null; };
 const shortCat = cat => cat.split(/\s+/).slice(0, 2).join(' ');
-// 本文の並び順（出典の項目の順）→ 登録順
+// 出典の項目の順 → 同じ項目の中では、答えが本文に出てくる順 → 登録順
 function sortedQuestions() {
-  const order = new Map(state.items.map((it, i) => [nk(it.cat) + '|' + nk(it.title), i]));
-  const key = q => order.has(nk(q.cat) + '|' + nk(q.title)) ? order.get(nk(q.cat) + '|' + nk(q.title)) : 1e9;
-  return state.questions.map((q, i) => ({ q, i })).sort((a, b) => key(a.q) - key(b.q) || a.i - b.i).map(x => x.q);
+  const keyOf = (cat, title) => nk(cat) + '|' + nk(title);
+  const order = new Map(state.items.map((it, i) => [keyOf(it.cat, it.title), i]));
+  const plain = new Map(state.items.map(it => [keyOf(it.cat, it.title), nk(bodyOf(it.text).plain)]));
+  const rank = q => {
+    const k = keyOf(q.cat, q.title);
+    if (!order.has(k)) return [1e9, 1e9];
+    const at = plain.get(k).indexOf(nk(q.answer).slice(0, 30));
+    return [order.get(k), at < 0 ? 1e9 : at];
+  };
+  return state.questions.map((q, i) => ({ q, i, r: rank(q) }))
+    .sort((a, b) => a.r[0] - b.r[0] || a.r[1] - b.r[1] || a.i - b.i).map(x => x.q);
 }
 function quizFiltered() {
   const r = state.settings.qRange || 'all';

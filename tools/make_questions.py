@@ -22,20 +22,29 @@ def load_items(filename):
     return {k: '\n'.join(v).strip() for k, v in items.items()}
 
 
-def cut(text, start, end, after=None):
-    """start から end までを切り出す。after を指定すると、その語句より後ろから探す"""
+def cut(text, start, end, after=None, exclude=()):
+    """start から end までを切り出す。after を指定すると、その語句より後ろから探す。
+    exclude には、答えから除く範囲を (始まり, 終わり) で指定できる（その行末の改行ごと除く）"""
     base = text.index(after) if after else 0
     if not after and text.count(start) != 1:
         raise ValueError(f'答えの始まりが1か所に決まりません: {start}（{text.count(start)}か所）')
     s = text.index(start, base)
-    return text[s:text.index(end, s) + len(end)]
+    ans = text[s:text.index(end, s) + len(end)]
+    for xs, xe in exclude:
+        a = ans.index(xs)
+        b = ans.index(xe, a) + len(xe)
+        if ans[b:b + 1] == '\n':
+            b += 1
+        ans = ans[:a] + ans[b:]
+    return ans
 
 
 def write(filename, cat, items, spec):
-    """spec: [(項目のタイトル, 問題文, 答えの始まり, 答えの終わり[, この語句の後から探す])]"""
+    """spec: [(項目のタイトル, 問題文, 答えの始まり, 答えの終わり[, {'after': 語句, 'exclude': [(始まり, 終わり)]}])]"""
     out, last = ['# 問題'], None
-    for title, q, start, end, *after in spec:
-        ans = cut(items[(cat, title)], start, end, after[0] if after else None)
+    for title, q, start, end, *opt in spec:
+        o = opt[0] if opt else {}
+        ans = cut(items[(cat, title)], start, end, o.get('after'), o.get('exclude', ()))
         if title != last:
             out.append(f'@ {cat} / {title}')
             last = title
