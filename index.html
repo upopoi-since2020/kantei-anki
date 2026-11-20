@@ -1454,6 +1454,16 @@ function bulkImport(src) {
       removed++;
     }
   }
+  // その章の項目を、ファイルの並び順に並べ直す（章の位置はそのまま）。
+  // 並び順は登録日時で決まり同期もされるので、登録日時をファイルの順にそろえる
+  for (const cat of cats) {
+    const inFile = parsed.filter(p => p.cat === cat)
+      .map(p => state.items.find(it => it.cat === cat && it.title === p.title)).filter(Boolean);
+    if (!inFile.length) continue;
+    const base = Math.min(...inFile.map(it => it.created || now));
+    inFile.forEach((it, k) => { if (it.created !== base + k) { it.created = base + k; it.updatedAt = now; } });
+  }
+  state.items.sort((x, y) => (x.created || 0) - (y.created || 0));
   save(true); renderManage(); renderList();
   if (typeof src !== 'string') $('#bulkText').value = '';
   $('#bulkMsg').textContent = `${added}件を登録しました` + (updated ? `（${updated}件は本文を更新）` : '') + (removed ? `（${removed}件を削除）` : '');
